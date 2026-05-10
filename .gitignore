@@ -1,3 +1,22 @@
+.venv/**
+.idea/
+venv/
+data/
+models/**/__pycache__/
+models/__pycache__/
+best_model.pth
+
+# ignore logs files
+*.log
+
+# but
+!.env_example
+!.gitattributes
+!.gitignore
+!.pre-commit-config.yaml
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
