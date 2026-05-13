@@ -110,9 +110,9 @@ class ConvTokenEmbedding(nn.Module):
         """Embed the input feature map into a sequence of tokens.
 
         Steps:
-            1. `Conv2d`          : `(B, C_in, H, W)`  -> `(B, C, H', W')`
-            2. Flatten + transpose : `(B, C, H', W')`   -> `(B, H'*W', C)`
-            3. `LayerNorm`       : normalize along last dim `C`
+            1. Conv2d               : `(B, C_in, H, W)`  -> `(B, C, H', W')`
+            2. Flatten + transpose  : `(B, C, H', W')`   -> `(B, H'*W', C)`
+            3. LayerNorm            : normalize along last dim `C`
 
         Args:
             x: Input feature map of shape `(B, in_channels, H, W)`.
