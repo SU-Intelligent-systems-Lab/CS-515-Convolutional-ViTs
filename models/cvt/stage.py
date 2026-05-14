@@ -30,7 +30,7 @@ Data flow
          │
     CvTBlock 0   (drop_path_probs[0])
     CvTBlock 1   (drop_path_probs[1])
-    …
+    ...
     CvTBlock d-1 (drop_path_probs[d-1])
          ↓
     Output: (B, N, embed_dim),  (H_out, W_out)

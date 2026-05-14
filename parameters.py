@@ -4,20 +4,20 @@ All hyperparameters, paths, and flags live here.  `parse_args()` is the
 single entry-point called from `main.py`; it returns a `Config` object
 whose fields are typed dataclasses, one per logical concern:
 
-* `ModelConfig`  — CvT architecture hyperparameters
-* `TrainConfig`  — optimizer, scheduler, regularization
-* `DataConfig`   — dataset paths, augmentation, loaders
-* `LogConfig`    — logging, checkpointing, W&B / TensorBoard flags
+- `ModelConfig`: CvT architecture hyperparameters
+- `TrainConfig`: optimizer, scheduler, regularization
+- `DataConfig`: dataset paths, augmentation, loaders
+- `LogConfig`: logging, checkpointing, W&B / TensorBoard flags
 
 Design notes
 ------------
-* All list-valued model args (`embed_dims`, `depths`, …) are passed as
-  space-separated integers on the CLI and stored as `tuple[int, …]`.
-* Boolean flags use `argparse`'s `BooleanOptionalAction` so both
+- All list-valued model args (`embed_dims`, `depths`, ...) are passed as
+  space-separated integers on the CLI and stored as `tuple[int, ...]`.
+- Boolean flags use `argparse`'s `BooleanOptionalAction` so both
   `--amp` and `--no-amp` work without a helper function.
-* `Config` is itself a frozen dataclass so it can be hashed / used as a
+- `Config` is itself a frozen dataclass so it can be hashed / used as a
   dict key if needed.
-* The `from_namespace` class-method on each sub-config converts the flat
+- The `from_namespace` class-method on each sub-config converts the flat
   `argparse.Namespace` into the structured hierarchy.
 """
 
@@ -66,18 +66,30 @@ class DataConfig:
         mean: Per-channel normalization mean (R, G, B).
         std: Per-channel normalization std (R, G, B).
     """
-    MEANS = {
-        "tiny-imagenet-200": (0.4802, 0.4481, 0.3975),
-    }
-    STDS = {
-        "tiny-imagenet-200": (0.2770, 0.2691, 0.2821),
-    }
-    NUM_CLASSES = {
-        "tiny-imagenet-200": 200,
-    }
-    NUM_IN_CHANNELS = {
-        "tiny-imagenet-200": 3,
-    }
+    MEANS: dict[str, tuple[float, ...]] = field(
+        default_factory=lambda: {
+            "tiny-imagenet-200": (0.4802, 0.4481, 0.3975),
+        },
+        init=False, repr=False, compare=False,
+    )
+    STDS: dict[str, tuple[float, ...]] = field(
+        default_factory=lambda: {
+            "tiny-imagenet-200": (0.2770, 0.2691, 0.2821),
+        },
+        init=False, repr=False, compare=False,
+    )
+    NUM_CLASSES: dict[str, int] = field(
+        default_factory=lambda: {
+            "tiny-imagenet-200": 200,
+        },
+        init=False, repr=False, compare=False,
+    )
+    NUM_IN_CHANNELS: dict[str, int] = field(
+        default_factory=lambda: {
+            "tiny-imagenet-200": 3,
+        },
+        init=False, repr=False, compare=False,
+    )
 
     dataset: str = "tiny-imagenet-200"
     data_dir: str = f"data/{dataset}"
@@ -109,9 +121,9 @@ class DataConfig:
         """
         return cls(
             dataset=ns.dataset,
-            data_dir=ns.data_dir if ns.data_dir is not None else f"data/{ns.dataset}",
-            num_classes=ns.num_classes if ns.num_classes is not None else cls.NUM_CLASSES[ns.dataset],
-            in_channels=ns.in_channels if ns.in_channels is not None else cls.NUM_IN_CHANNELS[ns.dataset],
+            data_dir=ns.data_dir,
+            num_classes=ns.num_classes,
+            in_channels=ns.in_channels,
             image_size=ns.image_size,
             num_workers=ns.num_workers,
             pin_memory=ns.pin_memory,
@@ -122,18 +134,25 @@ class DataConfig:
             randaugment_m=ns.randaugment_m,
             mixup_alpha=ns.mixup_alpha,
             cutmix_alpha=ns.cutmix_alpha,
-            mean=tuple(ns.mean) if ns.mean else cls.MEANS[ns.dataset],
-            std=tuple(ns.std) if ns.std else cls.STDS[ns.dataset],
+            mean=tuple(ns.mean),
+            std=tuple(ns.std),
         )
+
 
 @dataclass
 class ModelConfig:
     """
     Architecture hyperparameters for ConvViTs.
 
+    `num_classes` and `in_channels` are kept here so that models can be constructed from a single `ModelConfig`
+    without any refactoring. Their values are populated by `parse_args()` from the `DataConfig` registry. They are
+    not independent CLI arguments.
+
     Attributes:
+        num_classes: Number of output classes (sourced from `DataConfig`).
+        in_channels: Input image channels (sourced from `DataConfig`).
         embed_dims: Token embedding dimension for each of the 3 stages.
-        depths: Number of ConvViT Transformer blocks per stage.
+        depths: Number of CvT blocks per stage.
         num_heads: Number of attention heads per stage.
         mlp_ratio: Hidden-dim multiplier inside each FFN block.
         qkv_bias: Whether to add a learnable bias to Q/K/V projections.
@@ -147,6 +166,10 @@ class ModelConfig:
         stride_kv: Stride applied to K and V projections (reduces seq len).
         init_weights: Weight initialization scheme: "trunc_normal" or "kaiming".
     """
+
+    # Sourced from DataConfig - not independent CLI args.
+    num_classes: int = 200
+    in_channels: int = 3
 
     # Per-stage settings (3 stages in the original CvT paper)
     embed_dims: tuple[int, ...] = (64, 192, 384)
@@ -172,6 +195,8 @@ class ModelConfig:
     def from_namespace(cls, ns: argparse.Namespace) -> "ModelConfig":
         """
         Construct a `ModelConfig` from a parsed `argparse.Namespace`.
+        `num_classes` and `in_channels` are read from `ns` where they were already synced from the `DataConfig`
+        registry by `parse_args()`.
 
         Args:
             ns: Namespace returned by `ArgumentParser.parse_args()`.
@@ -180,6 +205,8 @@ class ModelConfig:
             Fully populated `ModelConfig` instance.
         """
         return cls(
+            num_classes=ns.num_classes,
+            in_channels=ns.in_channels,
             embed_dims=tuple(ns.embed_dims),
             depths=tuple(ns.depths),
             num_heads=tuple(ns.num_heads),
@@ -203,7 +230,7 @@ class TrainConfig:
     Training loop, optimizer, and scheduler settings.
 
     Attributes:
-        epochs: Total number of training epochs.
+        epochs: Total number of training epochs (upper bound when early stopping fires).
         batch_size: Per-GPU training batch size.
         learning_rate: Peak learning rate (after warm-up).
         min_lr: Minimum LR at the end of cosine decay.
@@ -212,7 +239,7 @@ class TrainConfig:
         beta2: AdamW beta2.
         grad_clip: Maximum gradient norm (0 disables clipping).
         warmup_epochs: Number of linear LR warm-up epochs.
-        scheduler: LR scheduler type: `"cosine"` or `"step"`.
+        scheduler: LR scheduler type: "cosine" or "step".
         step_size: Epoch step size for `StepLR` (ignored for cosine).
         gamma: LR decay factor for `StepLR` (ignored for cosine).
         amp: Use Automatic Mixed Precision (`torch.cuda.amp`).
@@ -220,6 +247,8 @@ class TrainConfig:
         seed: Global random seed for reproducibility.
         resume: Path to a checkpoint to resume training from.
         profile: Run `ptflops` and exit without training.
+        early_stopping_patience: Stop if val loss does not improve for this many consecutive epochs. (0 disables it)
+        early_stopping_min_delta: Minimum absolute improvement in val loss that resets the patience counter.
     """
     epochs: int = 300
     batch_size: int = 128
@@ -238,6 +267,8 @@ class TrainConfig:
     seed: int = 42
     resume: Optional[str] = None
     profile: bool = False
+    early_stopping_patience: int = 20
+    early_stopping_min_delta: float = 1e-4
 
     @classmethod
     def from_namespace(cls, ns: argparse.Namespace) -> "TrainConfig":
@@ -268,6 +299,8 @@ class TrainConfig:
             seed=ns.seed,
             resume=ns.resume,
             profile=ns.profile,
+            early_stopping_patience=ns.early_stopping_patience,
+            early_stopping_min_delta=ns.early_stopping_min_delta,
         )
 
 
@@ -277,7 +310,7 @@ class LogConfig:
     Logging, checkpointing, and experiment-tracking settings.
 
     Attributes:
-        log_level: Logging verbosity string (`"debug"`, `"info"`, …).
+        log_level: Logging verbosity string ("debug", "info", ...).
         log_dir: Directory for log files and TensorBoard event files.
         run_name: Human-readable experiment name (used in file paths).
         save_dir: Directory where model checkpoints are saved.
@@ -379,7 +412,7 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Token embedding dim for each of the 3 stages.")
     m.add_argument("--depths", type=int, nargs=3, default=[1, 2, 10],
                    metavar=("S1", "S2", "S3"),
-                   help="Number of Transformer blocks per stage.")
+                   help="Number of CvT blocks per stage.")
     m.add_argument("--num-heads", type=int, nargs=3, default=[1, 3, 6],
                    metavar=("S1", "S2", "S3"),
                    help="Number of attention heads per stage.")
@@ -444,17 +477,22 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Path to checkpoint to resume from.")
     t.add_argument("--profile", action="store_true",
                    help="Run ptflops profiling and exit.")
+    t.add_argument("--early-stopping-patience", type=int, default=20,
+                   help="Stop if val loss does not improve for N epochs (0 disables early stopping).")
+    t.add_argument("--early-stopping-min-delta", type=float, default=1e-4,
+                   help="Minimum val-loss improvement to count as progress.")
 
     # ------------------------------------------------------------------ Data
     d = parser.add_argument_group("Data")
     d.add_argument("--dataset", type=str, default="tiny-imagenet-200",
-                   choices=["tiny-imagenet-200"], help="Dataset to use.")
+                   choices=["tiny-imagenet-200"], help="Dataset to use. Controls num_classes, "
+                                                       "in_channels, and normalisation defaults")
     d.add_argument("--data-dir", type=str, default="data/tiny-imagenet-200",
-                   help="Root directory of Tiny ImageNet.")
+                   help="Root directory of the dataset. Defaults to data/<dataset> when omitted.")
     m.add_argument("--num-classes", type=int, default=200,
-                   help="Number of output classes.")
+                   help="Override number of output classes. Defaults to dataset registry value.")
     m.add_argument("--in-channels", type=int, default=3,
-                   help="Input image channels.")
+                   help="Override input channels. Defaults to dataset registry value.")
     d.add_argument("--image-size", type=int, default=64,
                    help="Spatial size images are resized/cropped to.")
     d.add_argument("--num-workers", type=int, default=4,
@@ -479,11 +517,11 @@ def _build_parser() -> argparse.ArgumentParser:
     d.add_argument("--mean", type=float, nargs=3,
                    default=None,
                    metavar=("R", "G", "B"),
-                   help="Normalisation mean (R G B).")
+                   help="Override normalization mean. Defaults to dataset registry value.")
     d.add_argument("--std", type=float, nargs=3,
                    default=None,
                    metavar=("R", "G", "B"),
-                   help="Normalisation std (R G B).")
+                   help="Override normalization std. Defaults to dataset registry value.")
 
     # ------------------------------------------------------------------- Log
     lg = parser.add_argument_group("Logging")
@@ -512,9 +550,15 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     """
     Parse command-line arguments and return a structured `Config`.
 
-    This is the single public entry-point used by `main.py`.  It builds the parser, parses `argv`
-    (or `sys.argv[1:]` when `None`), validates cross-argument constraints, and assembles the `Config`
-    hierarchy.
+    Steps
+    -----
+    1.  Parse `argv` with the full `ArgumentParser`.
+    2.  Sync `num_classes`, `in_channels`, `mean``, `std``, and `data_dir` onto `ns` from the `DataConfig` registry.
+        This is the single entry-point where dataset identity propagates to model config without any refactoring
+        of model classes.
+    3.  Run cross-argument validation.
+    4.  Normalize string values and resolve log level.
+    5.  Assemble and return a `Config` instance.
 
     Args:
         argv: Optional list of argument strings. Defaults to `sys.argv[1:]` when `None`.
@@ -534,13 +578,32 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     parser = _build_parser()
     ns = parser.parse_args(argv)
 
-    # ---- cross-argument validation ----------------------------------------
+    DEFAULT_DATASET = "tiny-imagenet-200"
+
+    # -------------- resolve dataset-derived defaults --------------
+    # Use a temporary DataConfig instance to access the registry dicts.
+    _reg = DataConfig()
+
+    if ns.num_classes is None:
+        ns.num_classes = _reg.NUM_CLASSES.get(ns.dataset, DEFAULT_DATASET)
+    if ns.in_channels is None:
+        ns.in_channels = _reg.NUM_IN_CHANNELS.get(ns.dataset, DEFAULT_DATASET)
+    if ns.mean is None:
+        ns.mean = list(_reg.MEANS.get(ns.dataset, DEFAULT_DATASET))
+    if ns.std is None:
+        ns.std = list(_reg.STDS.get(ns.dataset, DEFAULT_DATASET))
+    if ns.data_dir is None:
+        ns.data_dir = f"data/{ns.dataset}"
+
+    # ---------------- Cross-argument validation -----------------
     if ns.warmup_epochs >= ns.epochs:
         parser.error(f"--warmup-epochs ({ns.warmup_epochs}) must be less than --epochs ({ns.epochs}).")
     if not (0.0 < ns.train_split < 1.0):
         parser.error(f"--train-split must be in (0, 1), got {ns.train_split}.")
     if ns.grad_clip < 0.0:
         parser.error(f"--grad-clip must be >= 0, got {ns.grad_clip}.")
+    if ns.early_stopping_patience < 0:
+        parser.error(f"--early-stopping-patience must be >= 0, got {ns.early_stopping_patience}.")
 
     # Normalize raw strings so the rest of the code never sees mixed case.
     ns.log_level = ns.log_level.lower()
@@ -549,8 +612,5 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
 
     # Resolve log level to int early so logger.py doesn't need to import us.
     ns.log_level_int = _level_from_str(ns.log_level)
-
-    ns.num_classes = DataConfig.NUM_CLASSES.get(ns.dataset, ns.num_classes)
-    ns.in_channels = DataConfig.NUM_IN_CHANNELS.get(ns.dataset, ns.in_channels)
 
     return Config.from_namespace(ns)
