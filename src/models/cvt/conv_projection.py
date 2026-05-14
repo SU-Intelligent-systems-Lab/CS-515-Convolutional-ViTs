@@ -103,8 +103,6 @@ class ConvProjection(nn.Module):
     def extra_repr(self) -> str:
         """Compact parameter summary for `print(model)`."""
         return (
-            f"dw_kernel={self.dw_conv.kernel_size[0]}, "
-            f"stride={self.stride}, "
-            f"in={self.dw_conv.in_channels}, "
+            f"dw_kernel={self.dw_conv.kernel_size[0]}, stride={self.stride}, in={self.dw_conv.in_channels}, "
             f"out={self.pw_conv.out_channels}"
         )

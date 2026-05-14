@@ -5,20 +5,20 @@ A single Convolutional Transformer Block is the repeating unit stacked ``depth``
 It follows the canonical **pre-norm** Transformer design:
 
         X
- -------|
-|       ↓
-|   LayerNorm
-|   ConvAttention
-|   DropPath
-|--> Residual (+)
+ -------│
+│       ↓
+│   LayerNorm
+│   ConvAttention
+│   DropPath
+│--> Residual (+)
         ↓
         X
- -------|
-|       ↓
-|   LayerNorm
-|   FFN (MLP)
-|   DropPath
-|--> Residual (+)
+ -------│
+│       ↓
+│   LayerNorm
+│   FFN (MLP)
+│   DropPath
+│--> Residual (+)
         ↓
         X
 
@@ -135,7 +135,6 @@ class CvTBlock(nn.Module):
     def extra_repr(self) -> str:
         """Compact parameter summary for ``print(model)``."""
         return (
-            f"embed_dim={self.norm1.normalized_shape[0]}, "
-            f"num_heads={self.attn.num_heads}, "
+            f"embed_dim={self.norm1.normalized_shape[0]}, num_heads={self.attn.num_heads}, "
             f"drop_path={self.drop_path.drop_prob if isinstance(self.drop_path, DropPath) else 0.0:.4f}"
         )

@@ -166,9 +166,6 @@ class ConvTokenEmbedding(nn.Module):
     def extra_repr(self) -> str:
         """Return a compact parameter summary shown in `print(model)`."""
         return (
-            f"in_channels={self.in_channels}, "
-            f"embed_dim={self.embed_dim}, "
-            f"kernel_size={self.kernel_size}, "
-            f"stride={self.stride}, "
-            f"padding={self.padding}"
+            f"in_channels={self.in_channels}, embed_dim={self.embed_dim}, kernel_size={self.kernel_size}, "
+            f"stride={self.stride}, padding={self.padding}"
         )

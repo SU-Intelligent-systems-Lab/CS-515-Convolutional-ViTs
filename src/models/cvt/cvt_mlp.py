@@ -64,8 +64,4 @@ class CvTFFN(nn.Module):
 
     def extra_repr(self) -> str:
         fc1 = self.net[0]  # first Linear
-        return (
-            f"in={fc1.in_features}, "
-            f"hidden={fc1.out_features}, "
-            f"out={self.net[3].out_features}"
-        )
+        return f"in={fc1.in_features}, hidden={fc1.out_features}, out={self.net[3].out_features}"

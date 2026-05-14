@@ -193,9 +193,7 @@ class ConvAttention(nn.Module):
     def extra_repr(self) -> str:
         """Compact parameter summary for `print(model)`."""
         return (
-            f"embed_dim={self.embed_dim}, "
-            f"num_heads={self.num_heads}, "
-            f"head_dim={self.head_dim}, "
+            f"embed_dim={self.embed_dim}, num_heads={self.num_heads}, head_dim={self.head_dim}, "
             f"stride_kv={self.proj_k.stride}"
         )
     
