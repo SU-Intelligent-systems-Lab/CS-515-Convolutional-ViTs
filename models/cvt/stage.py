@@ -41,8 +41,8 @@ The output tokens can be:
 """
 import torch.nn as nn
 from torch import Tensor
-from src.models.cvt.conv_embed import ConvTokenEmbedding
-from src.models.cvt.cvt_block import CvTBlock
+from models.cvt.conv_embed import ConvTokenEmbedding
+from models.cvt.cvt_block import CvTBlock
 
 
 class CvTStage(nn.Module):

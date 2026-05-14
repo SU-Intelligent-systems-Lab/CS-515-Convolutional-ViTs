@@ -45,9 +45,9 @@ Key components
 import torch
 import torch.nn as nn
 from torch import Tensor
-from src.models.cvt.conv_attention import ConvAttention
-from src.models.cvt.drop_path import DropPath
-from src.models.cvt.cvt_mlp import CvTFFN
+from models.cvt.conv_attention import ConvAttention
+from models.cvt.drop_path import DropPath
+from models.cvt.cvt_mlp import CvTFFN
 
 
 class CvTBlock(nn.Module):

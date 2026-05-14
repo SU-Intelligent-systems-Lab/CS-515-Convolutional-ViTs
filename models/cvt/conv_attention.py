@@ -39,7 +39,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from src.models.cvt.conv_projection import ConvProjection
+from models.cvt.conv_projection import ConvProjection
 
 
 class ConvAttention(nn.Module):
