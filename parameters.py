@@ -92,7 +92,7 @@ class DataConfig:
     )
 
     dataset: str = "tiny-imagenet-200"
-    data_dir: str = f"data/{dataset}"
+    data_dir: str = f"data_sources/{dataset}"
     num_classes: int = NUM_CLASSES[dataset]
     in_channels: int = NUM_IN_CHANNELS[dataset]
     image_size: int = 64
@@ -487,8 +487,8 @@ def _build_parser() -> argparse.ArgumentParser:
     d.add_argument("--dataset", type=str, default="tiny-imagenet-200",
                    choices=["tiny-imagenet-200"], help="Dataset to use. Controls num_classes, "
                                                        "in_channels, and normalisation defaults")
-    d.add_argument("--data-dir", type=str, default="data/tiny-imagenet-200",
-                   help="Root directory of the dataset. Defaults to data/<dataset> when omitted.")
+    d.add_argument("--data-dir", type=str, default="data_sources/tiny-imagenet-200",
+                   help="Root directory of the dataset. Defaults to data_sources/<dataset> when omitted.")
     m.add_argument("--num-classes", type=int, default=200,
                    help="Override number of output classes. Defaults to dataset registry value.")
     m.add_argument("--in-channels", type=int, default=3,
@@ -593,7 +593,7 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     if ns.std is None:
         ns.std = list(_reg.STDS.get(ns.dataset, DEFAULT_DATASET))
     if ns.data_dir is None:
-        ns.data_dir = f"data/{ns.dataset}"
+        ns.data_dir = f"data_sources/{ns.dataset}"
 
     # ---------------- Cross-argument validation -----------------
     if ns.warmup_epochs >= ns.epochs:

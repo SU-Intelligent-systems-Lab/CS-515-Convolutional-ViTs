@@ -1,7 +1,7 @@
 .venv/**
 .idea/
 venv/
-data/
+data_sources/
 models/**/__pycache__/
 models/__pycache__/
 best_model.pth
