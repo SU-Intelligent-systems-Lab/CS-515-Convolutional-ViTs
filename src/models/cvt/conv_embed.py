@@ -73,15 +73,8 @@ class ConvTokenEmbedding(nn.Module):
         (16, 16)
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        embed_dim: int,
-        kernel_size: int,
-        stride: int,
-        padding: int,
-        bias: bool = True,
-    ) -> None:
+    def __init__(self, in_channels: int, embed_dim: int, kernel_size: int, stride: int, padding: int,
+                 bias: bool = True) -> None:
         super().__init__()
 
         self.in_channels = in_channels

@@ -37,6 +37,7 @@ approximation.
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 from src.models.cvt.conv_projection import ConvProjection
 
@@ -172,7 +173,7 @@ class ConvAttention(nn.Module):
         # Dot product of query and key but respecting the different shapes by transposing key => q x k_T
         # => (B, num_heads, N, d_head) x (B, num_heads, d_head, N_kv) => (B, num_heads, N, N_kv)
         attn = torch.matmul(q, k.transpose(-2, -1)) / self.scale
-        attn = attn.softmax(dim=-1)
+        attn = F.softmax(attn, dim=-1)
         attn = self.attn_drop(attn)
 
         # ---------------- 4. Weighted sum over V ----------------
