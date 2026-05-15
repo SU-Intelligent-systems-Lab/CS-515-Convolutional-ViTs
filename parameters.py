@@ -585,13 +585,13 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     _reg = DataConfig()
 
     if ns.num_classes is None:
-        ns.num_classes = _reg.NUM_CLASSES.get(ns.dataset, DEFAULT_DATASET)
+        ns.num_classes = _reg.NUM_CLASSES.get(ns.dataset, _reg.NUM_CLASSES[DEFAULT_DATASET])
     if ns.in_channels is None:
-        ns.in_channels = _reg.NUM_IN_CHANNELS.get(ns.dataset, DEFAULT_DATASET)
+        ns.in_channels = _reg.NUM_IN_CHANNELS.get(ns.dataset, _reg.NUM_IN_CHANNELS[DEFAULT_DATASET])
     if ns.mean is None:
-        ns.mean = list(_reg.MEANS.get(ns.dataset, DEFAULT_DATASET))
+        ns.mean = list(_reg.MEANS.get(ns.dataset, _reg.MEANS[DEFAULT_DATASET]))
     if ns.std is None:
-        ns.std = list(_reg.STDS.get(ns.dataset, DEFAULT_DATASET))
+        ns.std = list(_reg.STDS.get(ns.dataset, _reg.STDS[DEFAULT_DATASET]))
     if ns.data_dir is None:
         ns.data_dir = f"data_sources/{ns.dataset}"
 
