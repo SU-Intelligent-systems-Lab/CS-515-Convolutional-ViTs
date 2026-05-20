@@ -147,6 +147,7 @@ class ModelConfig:
     not independent CLI arguments.
 
     Attributes:
+        model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dicts. Defaults to "cvt".
         num_classes: Number of output classes (sourced from `DataConfig`).
         in_channels: Input image channels (sourced from `DataConfig`).
         embed_dims: Token embedding dimension for each of the 3 stages.
@@ -169,6 +170,7 @@ class ModelConfig:
     num_classes: int = 200
     in_channels: int = 3
 
+    model_name: str = "cvt"
     # Per-stage settings (3 stages in the original CvT paper)
     embed_dims: tuple[int, ...] = (64, 192, 384)
     depths: tuple[int, ...] = (1, 2, 10)
@@ -205,6 +207,7 @@ class ModelConfig:
         return cls(
             num_classes=ns.num_classes,
             in_channels=ns.in_channels,
+            model_name=ns.model_name,
             embed_dims=tuple(ns.embed_dims),
             depths=tuple(ns.depths),
             num_heads=tuple(ns.num_heads),
@@ -405,6 +408,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # --------------------------------- Model ---------------------------------
     m = parser.add_argument_group("Model")
+    m.add_argument("--model-name", type=str, default="cvt", choices=["cvt", "cmt"],
+                   help="Model to use.")
     m.add_argument("--embed-dims", type=int, nargs=3, default=[64, 192, 384],
                    metavar=("S1", "S2", "S3"),
                    help="Token embedding dim for each of the 3 stages.")
