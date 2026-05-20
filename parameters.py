@@ -1,24 +1,22 @@
-"""Command-line argument parsing and typed configuration dataclasses.
+"""
+Command-line argument parsing and typed configuration dataclasses.
 
-All hyperparameters, paths, and flags live here.  `parse_args()` is the
-single entry-point called from `main.py`; it returns a `Config` object
-whose fields are typed dataclasses, one per logical concern:
+All hyperparameters, paths, and flags live here. `parse_args()` is the single entry-point called from `main.py`, it
+returns a `Config` object whose fields are typed dataclasses, one per logical concern:
 
-- `ModelConfig`: CvT architecture hyperparameters
+- `ModelConfig`: ConvViT architecture hyperparameters
 - `TrainConfig`: optimizer, scheduler, regularization
 - `DataConfig`: dataset paths, augmentation, loaders
 - `LogConfig`: logging, checkpointing, W&B / TensorBoard flags
 
 Design notes
 ------------
-- All list-valued model args (`embed_dims`, `depths`, ...) are passed as
-  space-separated integers on the CLI and stored as `tuple[int, ...]`.
-- Boolean flags use `argparse`'s `BooleanOptionalAction` so both
-  `--amp` and `--no-amp` work without a helper function.
-- `Config` is itself a frozen dataclass so it can be hashed / used as a
-  dict key if needed.
-- The `from_namespace` class-method on each sub-config converts the flat
-  `argparse.Namespace` into the structured hierarchy.
+-   All list-valued model args (`embed_dims`, `depths`, ...) are passed as space-separated integers on the CLI and
+    stored as `tuple[int, ...]`.
+-   Boolean flags use argparse's `BooleanOptionalAction` so both `--amp` and `--no-amp` work without a helper function.
+-   `Config` is itself a frozen dataclass so it can be hashed / used as a dict key if needed.
+-   The `from_namespace` class-method on each sub-config converts the flat `argparse.Namespace` into the
+    structured hierarchy.
 """
 
 import argparse
@@ -27,9 +25,9 @@ from typing import Optional
 from utils.logger import _level_from_str
 
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------
 # Sub-config dataclasses
-# ---------------------------------------------------------------------------
+# --------------------------------------------
 
 
 @dataclass
@@ -386,9 +384,9 @@ class Config:
         )
 
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------
 # Argument parser
-# ---------------------------------------------------------------------------
+# --------------------------------------------
 
 def _build_parser() -> argparse.ArgumentParser:
     """

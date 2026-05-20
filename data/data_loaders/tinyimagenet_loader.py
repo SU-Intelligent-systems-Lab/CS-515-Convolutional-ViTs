@@ -4,7 +4,7 @@ TinyImageNet dataset and DataLoader factory.
 Handles everything between raw files on disk and batches of tensors:
 
 - `TinyImageNetDataset`: `torch.utils.data.Dataset` wrapping the official folder structure.
-- `build_dataloaders`: returns train / val / test `DataLoader` instances configured from a `DataConfig`.
+- `build_dataloaders`: returns train / val / test `DataLoader` instances configured from a `Config`.
 
 Tiny ImageNet directory layout
 -------------------------------
@@ -33,7 +33,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets.folder import default_loader
 from data.transforms import get_transforms
-from parameters import DataConfig
+from parameters import Config
 from utils import get_logger, measure_time
 
 
@@ -175,7 +175,7 @@ class TinyImageNetDataset(Dataset):
 # ------------- DataLoader factory -------------
 
 @measure_time
-def build_dataloaders(cfg: DataConfig) -> dict[str, DataLoader]:
+def build_dataloaders(cfg: Config) -> dict[str, DataLoader]:
     """
     Build train, val, and test `DataLoader` instances for Tiny ImageNet.
 
@@ -186,7 +186,7 @@ def build_dataloaders(cfg: DataConfig) -> dict[str, DataLoader]:
     calling this function.
 
     Args:
-        cfg: `DataConfig` instance with all data hyperparameters.
+        cfg: `Config` instance with all data hyperparameters.
 
     Returns:
         Dictionary with keys "train", "val", "test" mapping to `DataLoader` instances.
@@ -195,7 +195,7 @@ def build_dataloaders(cfg: DataConfig) -> dict[str, DataLoader]:
         FileNotFoundError: Propagated from `TinyImageNetDataset` when the dataset root is missing.
 
     Example:
-        >>> loaders = build_dataloaders(DataConfig())
+        >>> loaders = build_dataloaders(Config())
         >>> images, labels = next(iter(loaders["train"]))
         >>> images.shape
         torch.Size([128, 3, 64, 64])
@@ -205,13 +205,13 @@ def build_dataloaders(cfg: DataConfig) -> dict[str, DataLoader]:
         val-transformed)"""
         return torch.Generator().manual_seed(42)
 
-    train_tf = get_transforms(cfg, train=True)
-    eval_tf = get_transforms(cfg, train=False)
+    train_tf = get_transforms(cfg.data, train=True)
+    eval_tf = get_transforms(cfg.data, train=False)
 
-    train_dataset = TinyImageNetDataset(root=cfg.data_dir, split="train", transform=train_tf)
+    train_dataset = TinyImageNetDataset(root=cfg.data.data_dir, split="train", transform=train_tf)
 
     # In validation dataset, we pass training mapping for consistent label integers across splits
-    val_dataset = TinyImageNetDataset(root=cfg.data_dir, split="val", transform=eval_tf,
+    val_dataset = TinyImageNetDataset(root=cfg.data.data_dir, split="val", transform=eval_tf,
                                       class_to_idx=train_dataset.class_to_idx)
 
     # Splitting Val into (val + test)
@@ -221,31 +221,31 @@ def build_dataloaders(cfg: DataConfig) -> dict[str, DataLoader]:
 
     logger.info(f"Dataset sizes: train: {len(train_dataset)} | val: {len(val_subset)} | test: {len(test_subset)}")
 
-    # -- Shared DataLoader kwargs ------------------------------------------
+    # ---------- Shared DataLoader kwargs ----------
     _common_dataloader_kwargs: dict = dict(
-        num_workers=cfg.num_workers,
-        pin_memory=cfg.pin_memory,
-        prefetch_factor=cfg.prefetch_factor if cfg.num_workers > 0 else None,
-        persistent_workers=cfg.num_workers > 0,
+        num_workers=cfg.data.num_workers,
+        pin_memory=cfg.data.pin_memory,
+        prefetch_factor=cfg.data.prefetch_factor if cfg.data.num_workers > 0 else None,
+        persistent_workers=cfg.data.num_workers > 0,
     )
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.train.batch_size,
         shuffle=True,
         drop_last=True,   # uniform batch size; important for BatchNorm
         **_common_dataloader_kwargs,
     )
     val_loader = DataLoader(
         val_subset,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.train.batch_size,
         shuffle=False,
         drop_last=False,
         **_common_dataloader_kwargs,
     )
     test_loader = DataLoader(
         test_subset,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.train.batch_size,
         shuffle=False,
         drop_last=False,
         **_common_dataloader_kwargs,
