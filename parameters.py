@@ -147,7 +147,7 @@ class ModelConfig:
     not independent CLI arguments.
 
     Attributes:
-        model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dicts. Defaults to "cvt".
+        model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dict. Defaults to "cvt".
         num_classes: Number of output classes (sourced from `DataConfig`).
         in_channels: Input image channels (sourced from `DataConfig`).
         embed_dims: Token embedding dimension for each of the 3 stages.
@@ -248,7 +248,7 @@ class TrainConfig:
         seed: Global random seed for reproducibility.
         resume: Path to a checkpoint to resume training from.
         profile: Run `ptflops` and exit without training.
-        early_stopping_patience: Stop if val loss does not improve for this many consecutive epochs. (0 disables it)
+        early_stopping_patience: Stop if val loss does not improve for this many consecutive epochs (0 disables it).
         early_stopping_min_delta: Minimum absolute improvement in val loss that resets the patience counter.
     """
     epochs: int = 300
@@ -445,37 +445,24 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ----------------------------------------------------------------- Train
     t = parser.add_argument_group("Training")
-    t.add_argument("--epochs", type=int, default=300,
-                   help="Total training epochs.")
-    t.add_argument("--batch-size", type=int, default=128,
-                   help="Per-GPU batch size.")
-    t.add_argument("--learning-rate", type=float, default=5e-4,
-                   help="Peak learning rate.")
-    t.add_argument("--min-lr", type=float, default=1e-6,
-                   help="Minimum LR at end of cosine decay.")
-    t.add_argument("--weight-decay", type=float, default=0.05,
-                   help="AdamW weight decay.")
-    t.add_argument("--beta1", type=float, default=0.9,
-                   help="AdamW beta1.")
-    t.add_argument("--beta2", type=float, default=0.999,
-                   help="AdamW beta2.")
+    t.add_argument("--epochs", type=int, default=300, help="Total training epochs.")
+    t.add_argument("--batch-size", type=int, default=128, help="Per-GPU batch size.")
+    t.add_argument("--learning-rate", type=float, default=5e-4, help="Peak learning rate.")
+    t.add_argument("--min-lr", type=float, default=1e-6, help="Minimum LR at end of cosine decay.")
+    t.add_argument("--weight-decay", type=float, default=0.05, help="AdamW weight decay.")
+    t.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1.")
+    t.add_argument("--beta2", type=float, default=0.999, help="AdamW beta2.")
     t.add_argument("--grad-clip", type=float, default=1.0,
                    help="Max gradient norm (0 disables clipping).")
-    t.add_argument("--warmup-epochs", type=int, default=20,
-                   help="Linear LR warm-up epochs.")
-    t.add_argument("--scheduler", type=str, default="cosine",
-                   choices=["cosine", "step"],
+    t.add_argument("--warmup-epochs", type=int, default=20, help="Linear LR warm-up epochs.")
+    t.add_argument("--scheduler", type=str, default="cosine", choices=["cosine", "step"],
                    help="LR scheduler type.")
-    t.add_argument("--step-size", type=int, default=30,
-                   help="Epoch step size for StepLR.")
-    t.add_argument("--gamma", type=float, default=0.1,
-                   help="LR decay factor for StepLR.")
-    t.add_argument("--amp", action=argparse.BooleanOptionalAction,
-                   default=True, help="Use Automatic Mixed Precision.")
-    t.add_argument("--label-smoothing", type=float, default=0.1,
-                   help="Label-smoothing epsilon.")
-    t.add_argument("--seed", type=int, default=42,
-                   help="Global random seed.")
+    t.add_argument("--step-size", type=int, default=30, help="Epoch step size for StepLR.")
+    t.add_argument("--gamma", type=float, default=0.1, help="LR decay factor for StepLR.")
+    t.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True,
+                   help="Use Automatic Mixed Precision.")
+    t.add_argument("--label-smoothing", type=float, default=0.1, help="Label-smoothing epsilon.")
+    t.add_argument("--seed", type=int, default=42, help="Global random seed.")
     t.add_argument("--resume", type=str, default=None,
                    help="Path to checkpoint to resume from.")
     t.add_argument("--profile", action="store_true",
@@ -488,26 +475,21 @@ def _build_parser() -> argparse.ArgumentParser:
     # ------------------------------------------------------------------ Data
     d = parser.add_argument_group("Data")
     d.add_argument("--dataset", type=str, default="tiny-imagenet-200",
-                   choices=["tiny-imagenet-200"], help="Dataset to use. Controls num_classes, "
-                                                       "in_channels, and normalisation defaults")
-    d.add_argument("--data-dir", type=str, default="data_sources/tiny-imagenet-200",
+                   choices=["tiny-imagenet-200"],
+                   help="Dataset to use. Controls num_classes, in_channels, and normalisation defaults.")
+    d.add_argument("--data-dir", type=str, default=None,
                    help="Root directory of the dataset. Defaults to data_sources/<dataset> when omitted.")
-    m.add_argument("--num-classes", type=int, default=200,
-                   help="Override number of output classes. Defaults to dataset registry value.")
-    m.add_argument("--in-channels", type=int, default=3,
-                   help="Override input channels. Defaults to dataset registry value.")
     d.add_argument("--image-size", type=int, default=64,
                    help="Spatial size images are resized/cropped to.")
     d.add_argument("--num-workers", type=int, default=4,
                    help="DataLoader worker processes.")
-    d.add_argument("--pin-memory", action=argparse.BooleanOptionalAction,
-                   default=True, help="Pin tensors to GPU memory.")
+    d.add_argument("--pin-memory", action=argparse.BooleanOptionalAction, default=True,
+                   help="Pin tensors to GPU memory.")
     d.add_argument("--prefetch-factor", type=int, default=2,
                    help="Batches each worker pre-loads.")
     d.add_argument("--train-split", type=float, default=0.9,
                    help="Fraction of training data used for training.")
-    d.add_argument("--use-augmentation",
-                   action=argparse.BooleanOptionalAction, default=True,
+    d.add_argument("--use-augmentation", action=argparse.BooleanOptionalAction, default=True,
                    help="Enable RandAugment / MixUp augmentation.")
     d.add_argument("--randaugment-n", type=int, default=2,
                    help="RandAugment number of operations.")
@@ -517,19 +499,15 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="MixUp alpha (0 disables).")
     d.add_argument("--cutmix-alpha", type=float, default=1.0,
                    help="CutMix alpha (0 disables).")
-    d.add_argument("--mean", type=float, nargs=3,
-                   default=None,
-                   metavar=("R", "G", "B"),
+    d.add_argument("--mean", type=float, nargs=3, default=None, metavar=("R", "G", "B"),
                    help="Override normalization mean. Defaults to dataset registry value.")
-    d.add_argument("--std", type=float, nargs=3,
-                   default=None,
-                   metavar=("R", "G", "B"),
+    d.add_argument("--std", type=float, nargs=3, default=None, metavar=("R", "G", "B"),
                    help="Override normalization std. Defaults to dataset registry value.")
 
     # ------------------------------------------------------------------- Log
     lg = parser.add_argument_group("Logging")
     lg.add_argument("--log-level", type=str, default="info",
-                    choices=list(("debug", "info", "warning", "error")),
+                    choices=["debug", "info", "warning", "error"],
                     help="Logging verbosity.")
     lg.add_argument("--log-dir", type=str, default="logs",
                     help="Directory for log files.")
@@ -541,8 +519,8 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="Save a checkpoint every N epochs (0 = best only).")
     lg.add_argument("--keep-last", type=int, default=3,
                     help="Number of recent checkpoints to retain.")
-    lg.add_argument("--tensorboard", action=argparse.BooleanOptionalAction,
-                    default=False, help="Write TensorBoard summaries.")
+    lg.add_argument("--tensorboard", action=argparse.BooleanOptionalAction, default=False,
+                    help="Write TensorBoard summaries.")
     lg.add_argument("--log-interval", type=int, default=50,
                     help="Log training metrics every N batches.")
 
