@@ -35,6 +35,7 @@ projection" stated in the paper. The smaller K/V sequence is what makes CvT atte
 approximation.
 """
 import math
+from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -126,6 +127,9 @@ class ConvAttention(nn.Module):
         self.out_proj = nn.Linear(embed_dim, embed_dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
+        # Buffer to cache the attention matrix for visualizations/hooks
+        self._last_attn: Optional[torch.Tensor] = None
+
     def forward(self, x: Tensor, h: int, w: int) -> Tensor:
         """Compute convolutional multi-head self-attention.
 
@@ -174,6 +178,10 @@ class ConvAttention(nn.Module):
         # => (B, num_heads, N, d_head) x (B, num_heads, d_head, N_kv) => (B, num_heads, N, N_kv)
         attn = torch.matmul(q, k.transpose(-2, -1)) / self.scale
         attn = F.softmax(attn, dim=-1)
+
+        # Save a copy of the attention matrix so the forward hook can see it!
+        self._last_attn = attn.detach()
+
         attn = self.attn_drop(attn)
 
         # ---------------- 4. Weighted sum over V ----------------
