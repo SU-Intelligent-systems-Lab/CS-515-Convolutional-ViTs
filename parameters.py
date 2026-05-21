@@ -158,8 +158,6 @@ class ModelConfig:
 
     Attributes:
         model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dict. Defaults to "cvt".
-        num_classes: Number of output classes (sourced from `DataConfig`).
-        in_channels: Input image channels (sourced from `DataConfig`).
         embed_dims: Token embedding dimension for each of the 3 stages.
         depths: Number of CvT blocks per stage.
         num_heads: Number of attention heads per stage.
@@ -175,11 +173,6 @@ class ModelConfig:
         stride_kv: Stride applied to K and V projections (reduces seq len).
         init_weights: Weight initialization scheme: "trunc_normal" or "kaiming".
     """
-
-    # Sourced from DataConfig - not independent CLI args.
-    num_classes: int = 200
-    in_channels: int = 3
-
     model_name: str = "cvt"
     # Per-stage settings (3 stages in the original CvT paper)
     embed_dims: tuple[int, ...] = (64, 192, 384)
@@ -205,8 +198,6 @@ class ModelConfig:
     def from_namespace(cls, ns: argparse.Namespace) -> "ModelConfig":
         """
         Construct a `ModelConfig` from a parsed `argparse.Namespace`.
-        `num_classes` and `in_channels` are read from `ns` where they were already synced from the `DataConfig`
-        registry by `parse_args()`.
 
         Args:
             ns: Namespace returned by `ArgumentParser.parse_args()`.
@@ -215,8 +206,6 @@ class ModelConfig:
             Fully populated `ModelConfig` instance.
         """
         return cls(
-            num_classes=ns.num_classes,
-            in_channels=ns.in_channels,
             model_name=ns.model_name,
             embed_dims=tuple(ns.embed_dims),
             depths=tuple(ns.depths),
@@ -548,12 +537,9 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     Steps
     -----
     1.  Parse `argv` with the full `ArgumentParser`.
-    2.  Sync `num_classes`, `in_channels`, `mean``, `std``, and `data_dir` onto `ns` from the `DataConfig` registry.
-        This is the single entry-point where dataset identity propagates to model config without any refactoring
-        of model classes.
-    3.  Run cross-argument validation.
-    4.  Normalize string values and resolve log level.
-    5.  Assemble and return a `Config` instance.
+    2.  Run cross-argument validation.
+    3.  Normalize string values and resolve log level.
+    4.  Assemble and return a `Config` instance.
 
     Args:
         argv: Optional list of argument strings. Defaults to `sys.argv[1:]` when `None`.
@@ -573,23 +559,6 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     parser = _build_parser()
     ns = parser.parse_args(argv)
 
-    DEFAULT_DATASET = "tiny-imagenet-200"
-
-    # -------------- resolve dataset-derived defaults --------------
-    # Use a temporary DataConfig instance to access the registry dicts.
-    _reg = DataConfig()
-
-    if ns.num_classes is None:
-        ns.num_classes = _reg.NUM_CLASSES.get(ns.dataset, _reg.NUM_CLASSES[DEFAULT_DATASET])
-    if ns.in_channels is None:
-        ns.in_channels = _reg.NUM_IN_CHANNELS.get(ns.dataset, _reg.NUM_IN_CHANNELS[DEFAULT_DATASET])
-    if ns.mean is None:
-        ns.mean = list(_reg.MEANS.get(ns.dataset, _reg.MEANS[DEFAULT_DATASET]))
-    if ns.std is None:
-        ns.std = list(_reg.STDS.get(ns.dataset, _reg.STDS[DEFAULT_DATASET]))
-    if ns.data_dir is None:
-        ns.data_dir = f"data_sources/{ns.dataset}"
-
     # ---------------- Cross-argument validation -----------------
     if ns.warmup_epochs >= ns.epochs:
         parser.error(f"--warmup-epochs ({ns.warmup_epochs}) must be less than --epochs ({ns.epochs}).")
@@ -601,11 +570,7 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
         parser.error(f"--early-stopping-patience must be >= 0, got {ns.early_stopping_patience}.")
 
     # Normalize raw strings so the rest of the code never sees mixed case.
-    ns.log_level = ns.log_level.lower()
     ns.scheduler = ns.scheduler.lower()
     ns.init_weights = ns.init_weights.lower()
-
-    # Resolve log level to int early so logger.py doesn't need to import us.
-    ns.log_level_int = _level_from_str(ns.log_level)
 
     return Config.from_namespace(ns)
