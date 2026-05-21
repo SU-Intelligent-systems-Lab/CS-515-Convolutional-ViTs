@@ -184,7 +184,7 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
 
     # Expanded vertical spacing slightly (from 3.2 to 3.6) to make room for confidence bars
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.4, n_rows * 3.6))
-    fig.suptitle("Prediction Gallery (✓ correct  /  ✗ wrong)", fontsize=14, fontweight="bold")
+    fig.suptitle("Prediction Gallery (✓ correct  /  ✗ wrong)", fontsize=18, fontweight="bold")
     axes = axes.flatten()
 
     for i, ax in enumerate(axes):
