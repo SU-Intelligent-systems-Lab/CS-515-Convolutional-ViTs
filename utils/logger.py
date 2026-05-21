@@ -25,7 +25,7 @@ from typing import Optional
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEFAULT_FMT = "[%(asctime)s] [%(levelname)-8s] [%(name)s:%(lineno)d]  %(message)s"
+_DEFAULT_FMT = "[%(asctime)s] [%(levelname)-8s] [%(name)s:%(lineno)-4d] %(message)s"
 _DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 # Maps string names (from argparse) -> logging levels.

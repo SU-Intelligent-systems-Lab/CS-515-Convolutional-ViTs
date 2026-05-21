@@ -90,9 +90,6 @@ class DataConfig:
     )
 
     dataset: str = "tiny-imagenet-200"
-    data_dir: str = f"data_sources/{dataset}"
-    num_classes: int = NUM_CLASSES[dataset]
-    in_channels: int = NUM_IN_CHANNELS[dataset]
     image_size: int = 64
     num_workers: int = 4
     pin_memory: bool = True
@@ -103,13 +100,31 @@ class DataConfig:
     randaugment_m: int = 9
     mixup_alpha: float = 0.8
     cutmix_alpha: float = 1.0
-    mean: tuple[float, ...] = MEANS[dataset]
-    std: tuple[float, ...] = STDS[dataset]
+    data_dir: str = field(init=False)
+    num_classes: int = field(init=False)
+    in_channels: int = field(init=False)
+    mean: tuple[float, ...] = field(init=False)
+    std: tuple[float, ...] = field(init=False)
+
+    def __post_init__(self):
+        """Calculate dependent fields after the instance is initialized."""
+        # Ensure the requested dataset exists in configurations
+        if self.dataset not in self.NUM_CLASSES:
+            raise ValueError(f"Dataset '{self.dataset}' is not configured in DataConfig lookups.")
+
+        # Safely compute dependent values based on the assigned dataset
+        self.data_dir = f"data_sources/{self.dataset}"
+        self.num_classes = self.NUM_CLASSES[self.dataset]
+        self.in_channels = self.NUM_IN_CHANNELS[self.dataset]
+        self.mean = self.MEANS[self.dataset]
+        self.std = self.STDS[self.dataset]
 
     @classmethod
     def from_namespace(cls, ns: argparse.Namespace) -> "DataConfig":
         """
         Construct a `DataConfig` from a parsed `argparse.Namespace`.
+        Note: Since data_dir, mean, std, etc., are handled by __post_init__, we only need to pass the base overrides
+        from our CLI namespace.
 
         Args:
             ns: Namespace returned by `ArgumentParser.parse_args()`.
@@ -119,9 +134,6 @@ class DataConfig:
         """
         return cls(
             dataset=ns.dataset,
-            data_dir=ns.data_dir,
-            num_classes=ns.num_classes,
-            in_channels=ns.in_channels,
             image_size=ns.image_size,
             num_workers=ns.num_workers,
             pin_memory=ns.pin_memory,
@@ -132,8 +144,6 @@ class DataConfig:
             randaugment_m=ns.randaugment_m,
             mixup_alpha=ns.mixup_alpha,
             cutmix_alpha=ns.cutmix_alpha,
-            mean=tuple(ns.mean),
-            std=tuple(ns.std),
         )
 
 
@@ -328,6 +338,10 @@ class LogConfig:
     keep_last: int = 3
     tensorboard: bool = False
     log_interval: int = 50
+    log_level_int: int = field(init=False)
+
+    def __post_init__(self):
+        self.log_level_int = _level_from_str(self.log_level.lower())
 
     @classmethod
     def from_namespace(cls, ns: argparse.Namespace) -> "LogConfig":

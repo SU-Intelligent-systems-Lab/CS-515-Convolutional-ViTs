@@ -1,16 +1,16 @@
-from cvt import CvT
-from parameters import ModelConfig
+from models.cvt import CvT
+from parameters import Config
 
 
-def build_cvt(config: ModelConfig) -> CvT:
+def build_cvt(config: Config) -> CvT:
     """
-    Construct a `CvT` model from a `ModelConfig`.
+    Construct a `CvT` model from a `Config`.
 
     A thin factory wrapper that makes `main.py` read cleanly:
-    `model = build_cvt(cfg.model)` rather than `CvT(cfg.model)`.
+    `model = build_cvt(cfg)` rather than `CvT(cfg)`.
 
     Args:
-        config: Populated `ModelConfig` dataclass.
+        config: Populated `Config` dataclass.
 
     Returns:
         Initialised `CvT` instance.

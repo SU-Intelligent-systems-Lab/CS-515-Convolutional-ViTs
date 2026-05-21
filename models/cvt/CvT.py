@@ -47,7 +47,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from models.cvt.stage import CvTStage
-from parameters import ModelConfig
+from parameters import Config
 
 
 class CvT(nn.Module):
@@ -60,11 +60,11 @@ class CvT(nn.Module):
         - Input: (B, in_channels, H, W)
         - Output: (B, num_classes) - raw (unnormalized) logits
     Args:
-        cfg:    A `ModelConfig` dataclass instance that carries all architecture hyperparameters. Using a dataclass
+        cfg:    A `Config` dataclass instance that carries all architecture hyperparameters. Using a dataclass
                 rather than individual keyword arguments keeps the constructor signature stable as the config evolves.
 
     Example:
-        >>> cfg = ModelConfig()
+        >>> cfg = Config()
         >>> model = CvT(cfg)
         >>> x = torch.randn(2, 3, 64, 64)
         >>> logits = model(x)
@@ -72,85 +72,85 @@ class CvT(nn.Module):
         torch.Size([2, 200])
     """
 
-    def __init__(self, cfg: ModelConfig) -> None:
+    def __init__(self, cfg: Config) -> None:
         super().__init__()
 
         self._cfg = cfg
-        total_depth: int = sum(cfg.depths)
+        total_depth: int = sum(cfg.model.depths)
 
         # ----------- Global stochastic-depth schedule -----------
         # Linearly spaced from 0 to drop_path_rate across all blocks. Each stage receives the appropriate slice.
-        dpr: list[float] = [float(x) for x in torch.linspace(0, cfg.drop_path_rate, total_depth)]
+        dpr: list[float] = [float(x) for x in torch.linspace(0, cfg.model.drop_path_rate, total_depth)]
 
         # ------------------------ Stage 1 -----------------------
         # Operates on the raw image, large kernel for aggressive downsampling.
         self.stage1 = CvTStage(
-            in_channels=cfg.in_channels,
-            embed_dim=cfg.embed_dims[0],
-            depth=cfg.depths[0],
-            num_heads=cfg.num_heads[0],
-            kernel_size_embed=cfg.kernel_size_embed,
-            stride_embed=cfg.stride_embed,
-            padding_embed=cfg.padding_embed,
-            kernel_size_proj=cfg.kernel_size_proj,
-            stride_kv=cfg.stride_kv,
-            mlp_ratio=cfg.mlp_ratio,
-            drop_rate=cfg.drop_rate,
-            attn_drop_rate=cfg.attn_drop_rate,
-            drop_path_probs=dpr[: cfg.depths[0]],
-            qkv_bias=cfg.qkv_bias,
+            in_channels=cfg.data.in_channels,
+            embed_dim=cfg.model.embed_dims[0],
+            depth=cfg.model.depths[0],
+            num_heads=cfg.model.num_heads[0],
+            kernel_size_embed=cfg.model.kernel_size_embed,
+            stride_embed=cfg.model.stride_embed,
+            padding_embed=cfg.model.padding_embed,
+            kernel_size_proj=cfg.model.kernel_size_proj,
+            stride_kv=cfg.model.stride_kv,
+            mlp_ratio=cfg.model.mlp_ratio,
+            drop_rate=cfg.model.drop_rate,
+            attn_drop_rate=cfg.model.attn_drop_rate,
+            drop_path_probs=dpr[: cfg.model.depths[0]],
+            qkv_bias=cfg.model.qkv_bias,
         )
 
         # ------------------------ Stage 2 -----------------------
         # Here: Input channels = embed_dim of Stage 1.
         self.stage2 = CvTStage(
-            in_channels=cfg.embed_dims[0],
-            embed_dim=cfg.embed_dims[1],
-            depth=cfg.depths[1],
-            num_heads=cfg.num_heads[1],
+            in_channels=cfg.model.embed_dims[0],
+            embed_dim=cfg.model.embed_dims[1],
+            depth=cfg.model.depths[1],
+            num_heads=cfg.model.num_heads[1],
             kernel_size_embed=3,
             stride_embed=2,
             padding_embed=1,
-            kernel_size_proj=cfg.kernel_size_proj,
-            stride_kv=cfg.stride_kv,
-            mlp_ratio=cfg.mlp_ratio,
-            drop_rate=cfg.drop_rate,
-            attn_drop_rate=cfg.attn_drop_rate,
-            drop_path_probs=dpr[cfg.depths[0]: cfg.depths[0] + cfg.depths[1]],
-            qkv_bias=cfg.qkv_bias,
+            kernel_size_proj=cfg.model.kernel_size_proj,
+            stride_kv=cfg.model.stride_kv,
+            mlp_ratio=cfg.model.mlp_ratio,
+            drop_rate=cfg.model.drop_rate,
+            attn_drop_rate=cfg.model.attn_drop_rate,
+            drop_path_probs=dpr[cfg.model.depths[0]: cfg.model.depths[0] + cfg.model.depths[1]],
+            qkv_bias=cfg.model.qkv_bias,
         )
 
         # ------------------------ Stage 3 -----------------------
         # Here: Input channels = embed_dim of Stage 2.
         self.stage3 = CvTStage(
-            in_channels=cfg.embed_dims[1],
-            embed_dim=cfg.embed_dims[2],
-            depth=cfg.depths[2],
-            num_heads=cfg.num_heads[2],
+            in_channels=cfg.model.embed_dims[1],
+            embed_dim=cfg.model.embed_dims[2],
+            depth=cfg.model.depths[2],
+            num_heads=cfg.model.num_heads[2],
             kernel_size_embed=3,
             stride_embed=2,
             padding_embed=1,
-            kernel_size_proj=cfg.kernel_size_proj,
-            stride_kv=cfg.stride_kv,
-            mlp_ratio=cfg.mlp_ratio,
-            drop_rate=cfg.drop_rate,
-            attn_drop_rate=cfg.attn_drop_rate,
-            drop_path_probs=dpr[cfg.depths[0] + cfg.depths[1]:],
-            qkv_bias=cfg.qkv_bias,
+            kernel_size_proj=cfg.model.kernel_size_proj,
+            stride_kv=cfg.model.stride_kv,
+            mlp_ratio=cfg.model.mlp_ratio,
+            drop_rate=cfg.model.drop_rate,
+            attn_drop_rate=cfg.model.attn_drop_rate,
+            drop_path_probs=dpr[cfg.model.depths[0] + cfg.model.depths[1]:],
+            qkv_bias=cfg.model.qkv_bias,
         )
 
         # ----------------------- CLS token ----------------------
         # A single learnable vector prepended to the Stage-3 token sequence.
         # Shape: (1, 1, embed_dims[-1]) - broadcast over the batch dimension.
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, cfg.embed_dims[2]))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, cfg.model.embed_dims[2]))
 
         # ------------------ Classification head -----------------
         # Applied to the CLS token after Layer Normalisation.
-        self.norm = nn.LayerNorm(cfg.embed_dims[2])
-        self.head = nn.Linear(cfg.embed_dims[2], cfg.num_classes)
+        self.norm = nn.LayerNorm(cfg.model.embed_dims[2])
+        self.head = nn.Linear(cfg.model.embed_dims[2], cfg.data.num_classes)
 
         # ----------------- Weight Initialization ----------------
-        self._init_weights(cfg.init_weights)
+        self._init_weights(cfg.model.init_weights)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -170,7 +170,7 @@ class CvT(nn.Module):
 
         # Reshape tokens back to a 2-D feature map for Stage 2's ConvEmbed.
         # (B, N1, D1) -> (B, D1, h1, w1)
-        x = tokens.transpose(1, 2).reshape(B, self._cfg.embed_dims[0], h, w)
+        x = tokens.transpose(1, 2).reshape(B, self._cfg.model.embed_dims[0], h, w)
 
         # ------------------------ Stage 2 -----------------------
         # (B, D1, h1, w1) -> tokens (B, N2, D2), spatial (h2, w2)
@@ -178,7 +178,7 @@ class CvT(nn.Module):
 
         # Reshape for Stage 3's ConvEmbed.
         # (B, N2, D2) -> (B, D2, h2, w2)
-        x = tokens.transpose(1, 2).reshape(B, self._cfg.embed_dims[1], h, w)
+        x = tokens.transpose(1, 2).reshape(B, self._cfg.model.embed_dims[1], h, w)
 
         # ------------------------ Stage 3 -----------------------
         # (B, D2, h2, w2) -> tokens (B, N3, D3), spatial (h3, w3)
@@ -259,6 +259,6 @@ class CvT(nn.Module):
         """Compact summary shown in ``print(model)``."""
         cfg = self._cfg
         return (
-            f"embed_dims={cfg.embed_dims}, depths={cfg.depths}, num_heads={cfg.num_heads}, "
-            f"num_classes={cfg.num_classes}, params={self.num_parameters:,}"
+            f"embed_dims={cfg.model.embed_dims}, depths={cfg.model.depths}, num_heads={cfg.model.num_heads}, "
+            f"num_classes={cfg.data.num_classes}, params={self.num_parameters:,}"
         )

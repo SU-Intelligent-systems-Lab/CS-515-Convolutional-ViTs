@@ -89,18 +89,18 @@ class ClassificationMetrics:
             Dictionary with keys:
             - `top1` : float, top-1 accuracy (0–100).
             - `top5` : float, top-5 accuracy (0–100).
-            - `precision` : float, macro precision (0–100).
-            - `recall` : float, macro recall (0–100).
-            - `f1` : float, macro F1 (0–100).
+            - `precision` : float, macro precision (0–1).
+            - `recall` : float, macro recall (0–1).
+            - `f1` : float, macro F1 (0–1).
             - `confusion_matrix`: (C, C) long tensor on CPU.
         """
         # torchmetrics returns values in [0, 1]. We should multiply by 100 for getting percentages.
         return {
             "top1": self._top1.compute().item() * 100.0,
             "top5": self._top5.compute().item() * 100.0,
-            "precision": self._precision.compute().item() * 100.0,
-            "recall": self._recall.compute().item() * 100.0,
-            "f1": self._f1.compute().item() * 100.0,
+            "precision": self._precision.compute().item(),
+            "recall": self._recall.compute().item(),
+            "f1": self._f1.compute().item(),
             "confusion_matrix": self._cm.compute().cpu(),
         }
 
