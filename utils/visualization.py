@@ -234,7 +234,6 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
     plt.subplots_adjust(hspace=0.45, wspace=0.3)
     save_fig(save_path, tight_layout=False)
     plt.close(fig)
-    logger.info(f"Prediction gallery saved -> {save_path}.png")
 
 
 def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_shapes: list[tuple[int, int]],
@@ -360,7 +359,6 @@ def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_sh
 
     save_fig(save_path, tight_layout=False)
     plt.close(fig)
-    logger.info(f"Attention maps saved -> {save_path}.png")
 
 
 def extract_attention_weights(model: torch.nn.Module) -> tuple[dict[str, Tensor], list]:
