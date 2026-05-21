@@ -1,10 +1,10 @@
 """Logging configuration for the ConvViTs project.
 
-Provides a single ``setup_logger`` entry-point that configures the root
+Provides a single `setup_logger` entry-point that configures the root
 logger (or any named logger) with consistent formatting, optional file
 output, and rank-awareness for future distributed training support.
 
-Typical usage (called once in ``main.py`` before anything else):
+Typical usage (called once in `main.py` before anything else):
 
     from utils.logger import setup_logger
     logger = setup_logger(name="convvits", log_file="logs/train.log", level=logging.INFO)
@@ -44,14 +44,14 @@ LEVEL_MAP: dict[str, int] = {
 
 def _make_formatter(fmt: str = _DEFAULT_FMT, date_fmt: str = _DATE_FMT) -> logging.Formatter:
     """
-    Build a ``logging.Formatter`` with the project-standard layout.
+    Build a `logging.Formatter` with the project-standard layout.
 
     Args:
         fmt: Log record format string.
         date_fmt: Date/time format string.
 
     Returns:
-        Configured ``Formatter`` instance.
+        Configured `Formatter` instance.
     """
     return logging.Formatter(fmt=fmt, datefmt=date_fmt)
 
@@ -65,12 +65,12 @@ def _make_stream_handler(
     Create a stream handler pointed at *stream*.
 
     Args:
-        stream: Output stream (default: ``sys.stdout``).
+        stream: Output stream (default: `sys.stdout`).
         level: Minimum level this handler will emit.
         fmt: Log record format string.
 
     Returns:
-        Configured ``StreamHandler``.
+        Configured `StreamHandler`.
     """
     handler = logging.StreamHandler(stream)
     handler.setLevel(level)
@@ -94,7 +94,7 @@ def _make_file_handler(
         fmt: Log record format string.
 
     Returns:
-        Configured ``FileHandler``.
+        Configured `FileHandler`.
     """
     log_file.parent.mkdir(parents=True, exist_ok=True)
     handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
@@ -105,13 +105,13 @@ def _make_file_handler(
 
 def _level_from_str(level_str: str) -> int:
     """
-    Convert a case-insensitive level string to a ``logging`` int constant.
+    Convert a case-insensitive level string to a `logging` int constant.
 
     Args:
-        level_str: One of ``"debug"``, ``"info"``, ``"warning"``, ``"error"``, ``"critical"`` (case-insensitive).
+        level_str: One of "debug", "info", "warning", "error", "critical" (case-insensitive).
 
     Returns:
-        Corresponding ``logging`` level integer.
+        Corresponding `logging` level integer.
 
     Raises:
         ValueError: If *level_str* is not a recognized level name.
@@ -140,22 +140,22 @@ def setup_logger(
     """
     Configure and return a named logger for the project.
 
-    Attaches a ``StreamHandler`` (stdout) and, optionally, a ``FileHandler``. Safe to call multiple times - existing
+    Attaches a `StreamHandler` (stdout) and, optionally, a `FileHandler`. Safe to call multiple times - existing
     handlers are cleared before new ones are attached so the logger is idempotent.
 
-    In distributed settings, pass ``rank`` so that only the main process (rank 0) emits logs; worker processes will
-    have their level set to ``WARNING`` to suppress noise.
+    In distributed settings, pass `rank` so that only the main process (rank 0) emits logs; worker processes will
+    have their level set to `WARNING` to suppress noise.
 
     Args:
-        name: Logger name, typically ``"cvt"`` or ``__name__``.
-        level: Root logging level. Use ``LEVEL_MAP`` to resolve from a string (e.g. from argparse).
-        log_file: Optional path to a ``.log`` file. The directory is created if missing.
+        name: Logger name, typically "cvt" or `__name__`.
+        level: Root logging level. Use `LEVEL_MAP` to resolve from a string (e.g. from argparse).
+        log_file: Optional path to a `.log` file. The directory is created if missing.
         fmt: Log record format string.
-        propagate: Whether to propagate messages to the root logger. Usually ``False`` to avoid duplicate output.
-        rank: Process rank in distributed training. Non-zero ranks have their effective level raised to ``WARNING``.
+        propagate: Whether to propagate messages to the root logger. Usually `False` to avoid duplicate output.
+        rank: Process rank in distributed training. Non-zero ranks have their effective level raised to `WARNING`.
 
     Returns:
-        Configured ``logging.Logger`` instance.
+        Configured `logging.Logger` instance.
 
     Example:
         >>> logger = setup_logger(
@@ -196,14 +196,14 @@ def get_logger(name: str = "convvits") -> logging.Logger:
     """
     Return an already-configured logger by name.
 
-    Convenience wrapper around ``logging.getLogger`` - use this in submodules that should not reconfigure the logger,
+    Convenience wrapper around `logging.getLogger` - use this in submodules that should not reconfigure the logger,
     only retrieve it.
 
     Args:
-        name: Logger name passed to ``logging.getLogger``.
+        name: Logger name passed to `logging.getLogger`.
 
     Returns:
-        The named ``logging.Logger`` instance.
+        The named `logging.Logger` instance.
 
     Example:
         >>> logger = get_logger("convvits")

@@ -91,7 +91,7 @@ def _tiny_imagenet_transforms(cfg: DataConfig, train: bool,) -> transforms.Compo
     transform_list: list = []
 
     if train:
-        transform_list.append([
+        transform_list.extend([
             transforms.RandomResizedCrop(
                 cfg.image_size,
                 scale=(0.67, 1.0),

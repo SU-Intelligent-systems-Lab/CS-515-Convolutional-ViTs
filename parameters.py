@@ -246,7 +246,8 @@ class TrainConfig:
         label_smoothing: Label-smoothing epsilon for `CrossEntropyLoss`.
         seed: Global random seed for reproducibility.
         resume: Path to a checkpoint to resume training from.
-        profile: Run `ptflops` and exit without training.
+        mode: Possible Values ["train", "test", "both", "profile"]. if "profile", run `ptflops` and exit without
+              training.
         early_stopping_patience: Stop if val loss does not improve for this many consecutive epochs (0 disables it).
         early_stopping_min_delta: Minimum absolute improvement in val loss that resets the patience counter.
     """
@@ -266,7 +267,7 @@ class TrainConfig:
     label_smoothing: float = 0.1
     seed: int = 42
     resume: Optional[str] = None
-    profile: bool = False
+    mode: str = None
     early_stopping_patience: int = 20
     early_stopping_min_delta: float = 1e-4
 
@@ -298,7 +299,7 @@ class TrainConfig:
             label_smoothing=ns.label_smoothing,
             seed=ns.seed,
             resume=ns.resume,
-            profile=ns.profile,
+            mode=ns.mode,
             early_stopping_patience=ns.early_stopping_patience,
             early_stopping_min_delta=ns.early_stopping_min_delta,
         )
@@ -468,8 +469,8 @@ def _build_parser() -> argparse.ArgumentParser:
     t.add_argument("--seed", type=int, default=42, help="Global random seed.")
     t.add_argument("--resume", type=str, default=None,
                    help="Path to checkpoint to resume from.")
-    t.add_argument("--profile", action="store_true",
-                   help="Run ptflops profiling and exit.")
+    t.add_argument("--mode", type=str, default="both", choices=["train", "test", "both", "profile"],
+                   help="Execution mode.")
     t.add_argument("--early-stopping-patience", type=int, default=20,
                    help="Stop if val loss does not improve for N epochs (0 disables early stopping).")
     t.add_argument("--early-stopping-min-delta", type=float, default=1e-4,
