@@ -68,7 +68,8 @@ class CMTStem(nn.Module):
 
     Args:
         in_channels: Number of channels in the input image (3 for RGB).
-        stem_channels: Number of output channels for the stem layers. For CMT-Ti this is 32.
+        stem_channels: Number of output channels for the stem layers.
+                       For CMT-Ti and CMT-XS this is 16. For CMT-S it is 32 and for CMT-B it is 38.
 
     Shape:
         - Input: (B, in_channels, H, W)
@@ -128,11 +129,6 @@ class CMTStem(nn.Module):
 
         return x
 
-    @property
-    def out_channels(self) -> int:
-        """Number of output channels (`stem_channels`)."""
-        return self.stem_channels
-
     def output_spatial_size(self, h_in: int, w_in: int) -> tuple[int, int]:
         """
         Compute the output spatial size without running a forward pass.
@@ -159,8 +155,5 @@ class CMTStem(nn.Module):
 
     def extra_repr(self) -> str:
         """Compact summary shown in `print(model)`."""
-        return (
-            f"in_channels={self.in_channels}, stem_channels={self.stem_channels}, "
-            f"out_channels={self.out_channels}"
-        )
+        return f"in_channels={self.in_channels}, stem_channels (out_channels)={self.stem_channels}"
     
