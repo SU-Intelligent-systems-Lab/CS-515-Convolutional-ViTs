@@ -158,40 +158,41 @@ class ModelConfig:
 
     Attributes:
         model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dict. Defaults to "cvt".
-        embed_dims: Token embedding dimension for each of the 3 stages.
-        depths: Number of CvT blocks per stage.
-        num_heads: Number of attention heads per stage.
-        mlp_ratio: Hidden-dim multiplier inside each FFN block.
+        cvt_embed_dims: Token embedding dimension for each of the 3 stages of CvT.
+        cvt_depths: Number of CvT blocks per stage.
+        cvt_num_heads: Number of attention heads per stage.
+        cvt_mlp_ratio: Hidden-dim multiplier inside each FFN block.
+        cvt_kernel_size_embed: Kernel size for the convolutional token embedding.
+        cvt_stride_embed: Stride for the convolutional token embedding.
+        cvt_padding_embed: Padding for the convolutional token embedding.
+        cvt_kernel_size_proj: Kernel size for the conv Q/K/V projections.
+        cvt_stride_kv: Stride applied to K and V projections (reduces seq len).
         qkv_bias: Whether to add a learnable bias to Q/K/V projections.
         drop_rate: Dropout probability on FFN outputs.
         attn_drop_rate: Dropout probability on attention weights.
         drop_path_rate: Maximum stochastic-depth drop probability (linearly increased across all blocks).
-        kernel_size_embed: Kernel size for the convolutional token embedding.
-        stride_embed: Stride for the convolutional token embedding.
-        padding_embed: Padding for the convolutional token embedding.
-        kernel_size_proj: Kernel size for the conv Q/K/V projections.
-        stride_kv: Stride applied to K and V projections (reduces seq len).
         init_weights: Weight initialization scheme: "trunc_normal" or "kaiming".
     """
     model_name: str = "cvt"
     # Per-stage settings (3 stages in the original CvT paper)
-    embed_dims: tuple[int, ...] = (64, 192, 384)
-    depths: tuple[int, ...] = (1, 2, 10)
-    num_heads: tuple[int, ...] = (1, 3, 6)
-    mlp_ratio: float = 4.0
+    cvt_embed_dims: tuple[int, ...] = (64, 192, 384)
+    cvt_depths: tuple[int, ...] = (1, 2, 10)
+    cvt_num_heads: tuple[int, ...] = (1, 3, 6)
+    cvt_mlp_ratio: float = 4.0
     qkv_bias: bool = True
     drop_rate: float = 0.0
     attn_drop_rate: float = 0.0
     drop_path_rate: float = 0.1
 
     # Convolutional embedding kernel params
-    kernel_size_embed: int = 7
-    stride_embed: int = 4
-    padding_embed: int = 2
+    cvt_kernel_size_embed: int = 7
+    cvt_stride_embed: int = 4
+    cvt_padding_embed: int = 2
 
     # Convolutional attention projection params
-    kernel_size_proj: int = 3
-    stride_kv: int = 2
+    cvt_kernel_size_proj: int = 3
+    cvt_stride_kv: int = 2
+
     init_weights: str = "trunc_normal"
 
     @classmethod
@@ -207,19 +208,19 @@ class ModelConfig:
         """
         return cls(
             model_name=ns.model_name,
-            embed_dims=tuple(ns.embed_dims),
-            depths=tuple(ns.depths),
-            num_heads=tuple(ns.num_heads),
-            mlp_ratio=ns.mlp_ratio,
+            cvt_embed_dims=tuple(ns.cvt_embed_dims),
+            cvt_depths=tuple(ns.cvt_depths),
+            cvt_num_heads=tuple(ns.cvt_num_heads),
+            cvt_mlp_ratio=ns.cvt_mlp_ratio,
             qkv_bias=ns.qkv_bias,
             drop_rate=ns.drop_rate,
             attn_drop_rate=ns.attn_drop_rate,
             drop_path_rate=ns.drop_path_rate,
-            kernel_size_embed=ns.kernel_size_embed,
-            stride_embed=ns.stride_embed,
-            padding_embed=ns.padding_embed,
-            kernel_size_proj=ns.kernel_size_proj,
-            stride_kv=ns.stride_kv,
+            cvt_kernel_size_embed=ns.cvt_kernel_size_embed,
+            cvt_stride_embed=ns.cvt_stride_embed,
+            cvt_padding_embed=ns.cvt_padding_embed,
+            cvt_kernel_size_proj=ns.cvt_kernel_size_proj,
+            cvt_stride_kv=ns.cvt_stride_kv,
             init_weights=ns.init_weights,
         )
 
@@ -414,17 +415,27 @@ def _build_parser() -> argparse.ArgumentParser:
     m = parser.add_argument_group("Model")
     m.add_argument("--model-name", type=str, default="cvt", choices=["cvt", "cmt"],
                    help="Model to use.")
-    m.add_argument("--embed-dims", type=int, nargs=3, default=[64, 192, 384],
+    m.add_argument("--cvt-embed-dims", type=int, nargs=3, default=[64, 192, 384],
                    metavar=("S1", "S2", "S3"),
                    help="Token embedding dim for each of the 3 stages.")
-    m.add_argument("--depths", type=int, nargs=3, default=[1, 2, 10],
+    m.add_argument("--cvt-depths", type=int, nargs=3, default=[1, 2, 10],
                    metavar=("S1", "S2", "S3"),
                    help="Number of CvT blocks per stage.")
-    m.add_argument("--num-heads", type=int, nargs=3, default=[1, 3, 6],
+    m.add_argument("--cvt-num-heads", type=int, nargs=3, default=[1, 3, 6],
                    metavar=("S1", "S2", "S3"),
                    help="Number of attention heads per stage.")
-    m.add_argument("--mlp-ratio", type=float, default=4.0,
+    m.add_argument("--cvt-mlp-ratio", type=float, default=4.0,
                    help="FFN hidden-dim multiplier.")
+    m.add_argument("--cvt-kernel-size-embed", type=int, default=7,
+                   help="Kernel size for convolutional token embedding.")
+    m.add_argument("--cvt-stride-embed", type=int, default=4,
+                   help="Stride for convolutional token embedding.")
+    m.add_argument("--cvt-padding-embed", type=int, default=2,
+                   help="Padding for convolutional token embedding.")
+    m.add_argument("--cvt-kernel-size-proj", type=int, default=3,
+                   help="Kernel size for conv Q/K/V projections.")
+    m.add_argument("--cvt-stride-kv", type=int, default=2,
+                   help="Stride for K and V conv projections.")
     m.add_argument("--qkv-bias", action=argparse.BooleanOptionalAction,
                    default=True, help="Learnable bias in Q/K/V projections.")
     m.add_argument("--drop-rate", type=float, default=0.0,
@@ -433,16 +444,6 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Attention weight dropout probability.")
     m.add_argument("--drop-path-rate", type=float, default=0.1,
                    help="Max stochastic-depth drop probability.")
-    m.add_argument("--kernel-size-embed", type=int, default=7,
-                   help="Kernel size for convolutional token embedding.")
-    m.add_argument("--stride-embed", type=int, default=4,
-                   help="Stride for convolutional token embedding.")
-    m.add_argument("--padding-embed", type=int, default=2,
-                   help="Padding for convolutional token embedding.")
-    m.add_argument("--kernel-size-proj", type=int, default=3,
-                   help="Kernel size for conv Q/K/V projections.")
-    m.add_argument("--stride-kv", type=int, default=2,
-                   help="Stride for K and V conv projections.")
     m.add_argument("--init-weights", type=str, default="trunc_normal",
                    choices=["trunc_normal", "kaiming"],
                    help="Weight initialisation scheme.")
