@@ -17,6 +17,8 @@ Design notes
 -   `Config` is itself a frozen dataclass so it can be hashed / used as a dict key if needed.
 -   The `from_namespace` class-method on each sub-config converts the flat `argparse.Namespace` into the
     structured hierarchy.
+-   CMT variant presets (Ti / XS / S / B) are stored as a class-level registry in `ModelConfig`. Passing
+    `--cmt-variant ti` on the CLI auto-fills all hyperparameters.
 """
 
 import argparse
@@ -152,9 +154,13 @@ class ModelConfig:
     """
     Architecture hyperparameters for ConvViTs.
 
-    `num_classes` and `in_channels` are kept here so that models can be constructed from a single `ModelConfig`
-    without any refactoring. Their values are populated by `parse_args()` from the `DataConfig` registry. They are
-    not independent CLI arguments.
+    Class-level `CMT_VARIANTS` lookup dict: maps shorthand keys ("ti", "xs", "s", "b") to the corresponding paper
+                                            hyperparameters.
+        `stem_channels`: Number of output channels of the stem.
+        `channel_dims`: Per-stage channel dimensions. Each stage's `PatchEmbedding` maps the previous stage's `channel_dims`
+                       to the next.
+        `depths`: Number of CMT Blocks per stage.
+        `mlp_ratios`: Per-stage IRFFN hidden-dim expansion factor.
 
     Attributes:
         model_name: Model identifier string. Must be a key in the lookup (_MODEL_REGISTRY) dict. Defaults to "cvt".
@@ -167,22 +173,51 @@ class ModelConfig:
         cvt_padding_embed: Padding for the convolutional token embedding.
         cvt_kernel_size_proj: Kernel size for the conv Q/K/V projections.
         cvt_stride_kv: Stride applied to K and V projections (reduces seq len).
-        qkv_bias: Whether to add a learnable bias to Q/K/V projections.
-        drop_rate: Dropout probability on FFN outputs.
+        qkv_bias: Whether to add a learnable bias to Q/K/V CvT Conv. projections or CMT linear projections
+                  inside SR-MHSA.
+        drop_rate: Dropout probability on CvT FFN outputs or CMT IRFFN outputs.
         attn_drop_rate: Dropout probability on attention weights.
         drop_path_rate: Maximum stochastic-depth drop probability (linearly increased across all blocks).
+        cmt_variant: Shorthand name of the preset used for CMT ("ti", "xs", "s", "b").
         init_weights: Weight initialization scheme: "trunc_normal" or "kaiming".
     """
+    CMT_VARIANTS: dict[str, dict] = field(
+        default_factory=lambda: {
+            "ti": {
+                "stem_channels": 16,
+                "channel_dims": (46, 92, 184, 368),
+                "depths": (2, 2, 10, 2),
+                "mlp_ratios": (3.6, 3.6, 3.6, 3.6),
+            },
+            "xs": {
+                "stem_channels": 16,
+                "channel_dims": (52, 104, 208, 416),
+                "depths": (3, 3, 12, 3),
+                "mlp_ratios": (3.8, 3.8, 3.8, 3.8),
+            },
+            "s": {
+                "stem_channels": 32,
+                "channel_dims": (64, 128, 256, 512),
+                "depths": (3, 3, 16, 3),
+                "mlp_ratios": (4.0, 4.0, 4.0, 4.0),
+            },
+            "b": {
+                "stem_channels": 38,
+                "channel_dims": (76, 152, 304, 608),
+                "depths": (4, 4, 20, 4),
+                "mlp_ratios": (4.0, 4.0, 4.0, 4.0),
+            }
+        },
+        init=False, repr=False, compare=False,
+    )
+
     model_name: str = "cvt"
+
     # Per-stage settings (3 stages in the original CvT paper)
     cvt_embed_dims: tuple[int, ...] = (64, 192, 384)
     cvt_depths: tuple[int, ...] = (1, 2, 10)
     cvt_num_heads: tuple[int, ...] = (1, 3, 6)
     cvt_mlp_ratio: float = 4.0
-    qkv_bias: bool = True
-    drop_rate: float = 0.0
-    attn_drop_rate: float = 0.0
-    drop_path_rate: float = 0.1
 
     # Convolutional embedding kernel params
     cvt_kernel_size_embed: int = 7
@@ -193,7 +228,33 @@ class ModelConfig:
     cvt_kernel_size_proj: int = 3
     cvt_stride_kv: int = 2
 
+    qkv_bias: bool = True
+    drop_rate: float = 0.0
+    attn_drop_rate: float = 0.0
+    drop_path_rate: float = 0.1
+
+    cmt_variant: str = "ti"
+
     init_weights: str = "trunc_normal"
+
+    cmt_stem_channels: int = field(init=False)
+    cmt_channel_dims: tuple[int, ...] = field(init=False)
+    cmt_depths: tuple[int, ...] = field(init=False)
+    cmt_mlp_ratios: tuple[float, ...] = field(init=False)
+
+    def __post_init__(self):
+        """Calculate dependent fields after the instance is initialized."""
+        # Ensure the requested dataset exists in configurations
+        if self.cmt_variant.lower() not in self.CMT_VARIANTS.keys():
+            raise ValueError(f"Unknown CMT Variant:'{self.cmt_variant.lower()}'. "
+                             f"Valid options: {list(self.CMT_VARIANTS.keys())}")
+
+        # Safely compute dependent values based on the assigned dataset
+        self.cmt_stem_channels = self.CMT_VARIANTS[self.cmt_variant.lower()]["stem_channels"]
+        self.cmt_channel_dims = self.CMT_VARIANTS[self.cmt_variant.lower()]["channel_dims"]
+        self.cmt_depths = self.CMT_VARIANTS[self.cmt_variant.lower()]["depths"]
+        self.cmt_mlp_ratios = self.CMT_VARIANTS[self.cmt_variant.lower()]["mlp_ratios"]
+
 
     @classmethod
     def from_namespace(cls, ns: argparse.Namespace) -> "ModelConfig":
@@ -221,6 +282,7 @@ class ModelConfig:
             cvt_padding_embed=ns.cvt_padding_embed,
             cvt_kernel_size_proj=ns.cvt_kernel_size_proj,
             cvt_stride_kv=ns.cvt_stride_kv,
+            cmt_variant=ns.cmt_variant,
             init_weights=ns.init_weights,
         )
 
@@ -361,10 +423,12 @@ class LogConfig:
 class Config:
     """
     Top-level container bundling all sub-configs.
+    Both models CvT and CMT are always populated regardless of which model is selected. The active model is determined
+    by `model.model_name`.
 
     Attributes:
         model: ConvViTs architecture settings.
-        train: Optimiser and training-loop settings.
+        train: Optimizer and training-loop settings.
         data: Dataset and augmentation settings.
         log: Logging and checkpointing settings.
     """
@@ -400,8 +464,7 @@ def _build_parser() -> argparse.ArgumentParser:
     """
     Construct the full `ArgumentParser` for the ConvViTs project.
 
-    Groups arguments into four `add_argument_group` sections that mirror the four dataclasses so the `--help`
-    output is easy to navigate.
+    Groups arguments into four `add_argument_group` sections: Model architecture, Training, Data, and Logging.
 
     Returns:
         Configured `ArgumentParser` instance.
@@ -417,25 +480,25 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Model to use.")
     m.add_argument("--cvt-embed-dims", type=int, nargs=3, default=[64, 192, 384],
                    metavar=("S1", "S2", "S3"),
-                   help="Token embedding dim for each of the 3 stages.")
+                   help="CvT Token embedding dim for each of the 3 stages.")
     m.add_argument("--cvt-depths", type=int, nargs=3, default=[1, 2, 10],
                    metavar=("S1", "S2", "S3"),
-                   help="Number of CvT blocks per stage.")
+                   help="CvT Number of blocks per stage.")
     m.add_argument("--cvt-num-heads", type=int, nargs=3, default=[1, 3, 6],
                    metavar=("S1", "S2", "S3"),
-                   help="Number of attention heads per stage.")
+                   help="CvT Number of attention heads per stage.")
     m.add_argument("--cvt-mlp-ratio", type=float, default=4.0,
-                   help="FFN hidden-dim multiplier.")
+                   help="CvT FFN hidden-dim multiplier.")
     m.add_argument("--cvt-kernel-size-embed", type=int, default=7,
-                   help="Kernel size for convolutional token embedding.")
+                   help="CvT Kernel size for convolutional token embedding.")
     m.add_argument("--cvt-stride-embed", type=int, default=4,
-                   help="Stride for convolutional token embedding.")
+                   help="CvT Stride for convolutional token embedding.")
     m.add_argument("--cvt-padding-embed", type=int, default=2,
-                   help="Padding for convolutional token embedding.")
+                   help="CvT Padding for convolutional token embedding.")
     m.add_argument("--cvt-kernel-size-proj", type=int, default=3,
-                   help="Kernel size for conv Q/K/V projections.")
+                   help="CvT Kernel size for conv Q/K/V projections.")
     m.add_argument("--cvt-stride-kv", type=int, default=2,
-                   help="Stride for K and V conv projections.")
+                   help="CvT Stride for K and V conv projections.")
     m.add_argument("--qkv-bias", action=argparse.BooleanOptionalAction,
                    default=True, help="Learnable bias in Q/K/V projections.")
     m.add_argument("--drop-rate", type=float, default=0.0,
@@ -447,8 +510,10 @@ def _build_parser() -> argparse.ArgumentParser:
     m.add_argument("--init-weights", type=str, default="trunc_normal",
                    choices=["trunc_normal", "kaiming"],
                    help="Weight initialisation scheme.")
+    m.add_argument("--cmt-variant", type=str, default="ti", choices=["ti", "xs", "s", "b"],
+                   help="CMT variants presented in the paper: ti (tiny), xs (extra-small), s (small), b (base).")
 
-    # ----------------------------------------------------------------- Train
+    # ------------------------------- Training --------------------------------
     t = parser.add_argument_group("Training")
     t.add_argument("--epochs", type=int, default=300, help="Total training epochs.")
     t.add_argument("--batch-size", type=int, default=128, help="Per-GPU batch size.")
@@ -477,7 +542,7 @@ def _build_parser() -> argparse.ArgumentParser:
     t.add_argument("--early-stopping-min-delta", type=float, default=1e-4,
                    help="Minimum val-loss improvement to count as progress.")
 
-    # ------------------------------------------------------------------ Data
+    # --------------------------------- Data ----------------------------------
     d = parser.add_argument_group("Data")
     d.add_argument("--dataset", type=str, default="tiny-imagenet-200",
                    choices=["tiny-imagenet-200"],
@@ -509,7 +574,7 @@ def _build_parser() -> argparse.ArgumentParser:
     d.add_argument("--std", type=float, nargs=3, default=None, metavar=("R", "G", "B"),
                    help="Override normalization std. Defaults to dataset registry value.")
 
-    # ------------------------------------------------------------------- Log
+    # ---------------------------------- Log ----------------------------------
     lg = parser.add_argument_group("Logging")
     lg.add_argument("--log-level", type=str, default="info",
                     choices=["debug", "info", "warning", "error"],
@@ -574,5 +639,6 @@ def parse_args(argv: Optional[list[str]] = None) -> Config:
     # Normalize raw strings so the rest of the code never sees mixed case.
     ns.scheduler = ns.scheduler.lower()
     ns.init_weights = ns.init_weights.lower()
+    ns.cmt_variant = ns.cmt_variant.lower()
 
     return Config.from_namespace(ns)
