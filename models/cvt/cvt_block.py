@@ -109,7 +109,7 @@ class CvTBlock(nn.Module):
         # Stochastic depth (identity when drop_path == 0)
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
-    def forward(self, x: Tensor, h: int, w: int) -> Tensor:
+    def forward(self, x: Tensor, h: int, w: int, has_cls_token: bool = False) -> Tensor:
         """
         Apply one CvT Transformer Block.
 
@@ -117,6 +117,7 @@ class CvTBlock(nn.Module):
             x: Token sequence (B, N, C) where N = H x W.
             h: Spatial height of the current feature map.
             w: Spatial width of the current feature map.
+            has_cls_token: flag to distinguish whether the block has CLS token or not.
 
         Returns:
             Transformed token sequence (B, N, C) - same shape as input, ready for the next block or the next
@@ -124,7 +125,7 @@ class CvTBlock(nn.Module):
         """
         # ------------ Attention branch ------------
         # x = x + DropPath( ConvAttention( LayerNorm(x) ) )
-        x = x + self.drop_path(self.attn(self.norm1(x), h, w))
+        x = x + self.drop_path(self.attn(self.norm1(x), h, w, has_cls_token=has_cls_token))
 
         # --------------- FFN branch ---------------
         # x = x + DropPath( FFN( LayerNorm(x) ) )

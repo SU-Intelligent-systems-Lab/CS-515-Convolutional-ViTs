@@ -182,12 +182,7 @@ class CvT(nn.Module):
 
         # ------------------------ Stage 3 -----------------------
         # (B, D2, h2, w2) -> tokens (B, N3, D3), spatial (h3, w3)
-        tokens, _ = self.stage3(x)
-
-        # ----------------- CLS token injection ------------------
-        # Expand the (1, 1, D3) parameter to (B, 1, D3) and prepend.
-        cls = self.cls_token.expand(B, -1, -1)   # (B, 1, D3)
-        tokens = torch.cat([cls, tokens], dim=1)   # (B, 1 + N3, D3)
+        tokens, _ = self.stage3(x, cls_token=self.cls_token)
 
         # --------------- LayerNorm + extract CLS ----------------
         tokens = self.norm(tokens)

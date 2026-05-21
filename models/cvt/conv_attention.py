@@ -66,8 +66,8 @@ class ConvAttention(nn.Module):
         qkv_bias: If `True`, the pointwise conv in each `ConvProjection` has a learnable bias.
 
     Shape:
-        - Input:  `(B, N, C)` tokens + `(H, W)` spatial shape
-        - Output: `(B, N, C)` attended tokens (sequence length unchanged)
+        - Input:  (B, N, C) tokens + (H, W) spatial shape
+        - Output: (B, N, C) attended tokens (sequence length unchanged)
 
     Raises:
         AssertionError: If `embed_dim` is not divisible by `num_heads`.
@@ -84,7 +84,7 @@ class ConvAttention(nn.Module):
                  attn_drop: float = 0.0, proj_drop: float = 0.0, qkv_bias: bool = True) -> None:
         super().__init__()
 
-        assert (embed_dim % num_heads == 0, f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})")
+        assert embed_dim % num_heads == 0, f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})"
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
@@ -121,7 +121,16 @@ class ConvAttention(nn.Module):
             bias=qkv_bias,
         )
 
+        # CLS-token projections (used only when CLS is present)
+        self.cls_q = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+        self.cls_k = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+        self.cls_v = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+
         self.attn_drop = nn.Dropout(attn_drop)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self._last_attn: Optional[torch.Tensor] = None
 
         # Final linear projection to mix head outputs.
         self.out_proj = nn.Linear(embed_dim, embed_dim)
@@ -130,8 +139,9 @@ class ConvAttention(nn.Module):
         # Buffer to cache the attention matrix for visualizations/hooks
         self._last_attn: Optional[torch.Tensor] = None
 
-    def forward(self, x: Tensor, h: int, w: int) -> Tensor:
-        """Compute convolutional multi-head self-attention.
+    def forward(self, x: Tensor, h: int, w: int, has_cls_token: bool = False) -> Tensor:
+        """
+        Compute convolutional multi-head self-attention.
 
         Steps:
             1. Project tokens into Q (stride=1), K and V (stride=stride_kv)
@@ -142,34 +152,62 @@ class ConvAttention(nn.Module):
             5. Concatenate heads -> linear output projection + dropout.
 
         Args:
-            x: Input token sequence `(B, N, C)` where `N = H * W`.
+            x: Input token sequence (B, N, C) where N = H * W.
             h: Spatial height of the token map (needed to reshape for conv).
             w: Spatial width of the token map.
+            has_cls_token: flag to distinguish whether the block has CLS token or not.
 
         Returns:
-            Attended token sequence of shape `(B, N, C)`.
+            Attended token sequence of shape (B, N, C).
         """
-        B, N, C = x.shape
-
-        # -------- 1. Convolutional Q / K / V projections --------
-        # Q: (B, N,  C)   — full spatial resolution
-        # K: (B, N', C)   — spatially downsampled (N' ≤ N)
-        # V: (B, N', C)   — spatially downsampled (N' ≤ N)
-        q, _, _ = self.proj_q(x, h, w)
-        k, h_kv, w_kv = self.proj_k(x, h, w)
-        v, _, _ = self.proj_v(x, h, w)
-
-        N_kv = h_kv * w_kv   # reduced sequence length for K / V
-
-        # ----------------- 2. Split into heads ------------------
-        # Reshape to (B, num_heads, seq_len, head_dim) for batched matmul.
-        # This is important to respect the spatial size of the tokens since q and k,v have different spatial sizes.
         def _split_heads(t: Tensor, seq_len: int) -> Tensor:
             return t.reshape(B, seq_len, self.num_heads, self.head_dim).permute(0, 2, 1, 3)       # (B, H, seq, d_head)
 
-        q = _split_heads(q, N)
-        k = _split_heads(k, N_kv)
-        v = _split_heads(v, N_kv)
+        B, N, C = x.shape
+
+        if not has_cls_token:
+            # -------- 1. Convolutional Q / K / V projections --------
+            # Q: (B, N,  C)   — full spatial resolution
+            # K: (B, N', C)   — spatially downsampled (N' ≤ N)
+            # V: (B, N', C)   — spatially downsampled (N' ≤ N)
+            q, _, _ = self.proj_q(x, h, w)
+            k, h_kv, w_kv = self.proj_k(x, h, w)
+            v, _, _ = self.proj_v(x, h, w)
+
+            N_kv = h_kv * w_kv   # reduced sequence length for K / V
+
+            # ----------------- 2. Split into heads ------------------
+            # Reshape to (B, num_heads, seq_len, head_dim) for batched matmul.
+            # This is important to respect the spatial size of the tokens since q and k,v have different spatial sizes.
+
+            q = _split_heads(q, N)
+            k = _split_heads(k, N_kv)
+            v = _split_heads(v, N_kv)
+
+        else:
+            # x = [CLS] + spatial tokens
+            cls_tok = x[:, :1, :]  # (B, 1, C)
+            spatial = x[:, 1:, :]  # (B, H*W, C)
+
+            if spatial.shape[1] != h * w:
+                raise ValueError(f"Expected {h * w} spatial tokens, got {spatial.shape[1]} (input seq_len={N})")
+
+            q_spatial, _, _ = self.proj_q(spatial, h, w)
+            k_spatial, h_kv, w_kv = self.proj_k(spatial, h, w)
+            v_spatial, _, _ = self.proj_v(spatial, h, w)
+
+            q_cls = self.cls_q(cls_tok)
+            k_cls = self.cls_k(cls_tok)
+            v_cls = self.cls_v(cls_tok)
+
+            q = torch.cat([q_cls, q_spatial], dim=1)  # (B, 1 + N, C)
+            k = torch.cat([k_cls, k_spatial], dim=1)  # (B, 1 + N_kv, C)
+            v = torch.cat([v_cls, v_spatial], dim=1)  # (B, 1 + N_kv, C)
+
+            N_kv = h_kv * w_kv
+            q = _split_heads(q, N)   # q already includes CLS, so its sequence length is N, not N+1
+            k = _split_heads(k, N_kv + 1)
+            v = _split_heads(v, N_kv + 1)
 
         # -------- 3. Scaled dot-product attention scores --------
         # softmax( Q x K_T / sqr_root(d_head) )

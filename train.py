@@ -28,7 +28,7 @@ import glob
 import os
 from math import inf
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -271,7 +271,8 @@ def save_checkpoint(state: dict, save_dir: str, filename: str, keep_last: int = 
 
 
 def load_checkpoint(path: str, model: nn.Module, optimizer: Optional[torch.optim.Optimizer] = None, scheduler=None,
-                    early_stopping: Optional[EarlyStopping] = None, device: torch.device = torch.device("cpu")) -> int:
+                    early_stopping: Optional[EarlyStopping] = None,
+                    device: torch.device = torch.device("cpu")) -> Tuple[int, float, float, dict]:
     """
     Load a checkpoint and restore all stateful objects.
 
@@ -284,7 +285,11 @@ def load_checkpoint(path: str, model: nn.Module, optimizer: Optional[torch.optim
         device: Device to map checkpoint tensors onto.
 
     Returns:
-        `epoch`: the epoch at which the checkpoint was saved, so training loop can resume from the correct iteration.
+        Tuple containing:
+        - `epoch`: the epoch at which the checkpoint was saved, so training loop can resume from the correct iteration.
+        - `best_val_loss`: The recorded best validation loss.
+        - `best_val_top1`: The recorded best validation top-1 accuracy.
+        - `history`: Training history container
     """
     logger.info(f"Loading checkpoint from {path}")
     ckpt = torch.load(path, map_location=device)
@@ -300,9 +305,16 @@ def load_checkpoint(path: str, model: nn.Module, optimizer: Optional[torch.optim
     if early_stopping is not None and "early_stopping_state" in ckpt:
         early_stopping.load_state_dict(ckpt["early_stopping_state"])
 
+    history = None
+    if "history" in ckpt:
+        history = ckpt["history"]
+
+    best_val_loss = ckpt.get("best_val_loss", float("inf"))
+    best_val_top1 = ckpt.get("best_val_top1", 0.0)
+
     epoch = ckpt.get("epoch", 0)
-    logger.info(f"Resumed from epoch {epoch} (best_val_loss={ckpt.get("best_val_loss", float("inf")):.4f})")
-    return epoch
+    logger.info(f"Resumed from epoch {epoch} (best_val_loss={best_val_loss:.4f})")
+    return epoch, best_val_loss, best_val_top1, history
 
 
 # --------------------------- Model Validation ---------------------------
@@ -419,6 +431,38 @@ def train_one_epoch(model: nn.Module, loader: torch.utils.data.DataLoader, optim
             scaler.unscale_(optimizer)
             nn.utils.clip_grad_norm_(model.parameters(), cfg.train.grad_clip)
 
+        # # ---- DEBUG AFTER UNSCALE + CLIP ----
+        # total_grad_sq = 0.0
+        # max_grad = 0.0
+        # grad_params = 0
+        # has_nan = False
+        # has_inf = False
+        #
+        # for p in model.parameters():
+        #     if p.grad is not None:
+        #         grad_params += 1
+        #
+        #         g = p.grad.detach()
+        #
+        #         if torch.isnan(g).any():
+        #             has_nan = True
+        #
+        #         if torch.isinf(g).any():
+        #             has_inf = True
+        #
+        #         total_grad_sq += g.pow(2).sum().item()
+        #         max_grad = max(max_grad, g.abs().max().item())
+        #
+        # total_grad_norm = total_grad_sq ** 0.5
+        #
+        # if epoch == 1:
+        #     logger.info(
+        #         f"Grad debug: grad_params={grad_params}, "
+        #         f"total_grad_norm={total_grad_norm:.6f}, "
+        #         f"max_grad={max_grad:.6f}, "
+        #         f"has_nan={has_nan}, has_inf={has_inf}"
+        #     )
+
         scaler.step(optimizer)
         scaler.update()
 
@@ -506,11 +550,6 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         if cfg.train.early_stopping_patience > 0 else None
     )
 
-    # Resume from checkpoint
-    start_epoch = 0
-    if cfg.train.resume:
-        start_epoch = load_checkpoint(cfg.train.resume, model, optimizer, scheduler, early_stopping, device)
-
     # Training state
     best_val_loss = inf
     best_val_top1 = 0.0
@@ -522,6 +561,17 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         "train_top5": [], "val_top5": [],
         "lr": [],
     }
+
+    # Resume from checkpoint
+    start_epoch = 0
+    if cfg.train.resume:
+        start_epoch, old_best_val_loss, old_best_val_top1, old_history = load_checkpoint(cfg.train.resume, model,
+                                                                                         optimizer, scheduler,
+                                                                                         early_stopping, device)
+        best_val_top1 = old_best_val_top1
+        best_val_loss = old_best_val_loss
+        history = old_history if old_history is not None else history
+
     save_dir = os.path.join(cfg.log.save_dir, cfg.log.run_name)
 
     # Epoch loop
@@ -531,13 +581,14 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         # Train
         tr_loss, tr_top1, tr_top5 = train_one_epoch(model, train_loader, optimizer, augmenter, device, cfg, scaler,
                                                     epoch)
+        logger.info(f"{'=' * 11} Training Metrics {'=' * 11}")
         logger.info(f"=> Training loss: {tr_loss:.4f} - Training Top-1 Accuracy: {tr_top1:.4f}% - "
                     f"Training Top-5 Accuracy: {tr_top5:.4f}%")
 
         # Validate
         val_loss, val_top1, val_top5 = validate(model, val_loader, val_criterion, device, cfg, epoch)
-        logger.info(f"=> Validation loss: {val_loss:.4f} - Validation Top-1 Accuracy: {val_top1:.4f}% - "
-                    f"Validation Top-5 Accuracy: {val_top5:.4f}%")
+        # logger.info(f"=> Validation loss: {val_loss:.4f} - Validation Top-1 Accuracy: {val_top1:.4f}% - "
+        #             f"Validation Top-5 Accuracy: {val_top5:.4f}%")
 
         # LR step
         scheduler.step()

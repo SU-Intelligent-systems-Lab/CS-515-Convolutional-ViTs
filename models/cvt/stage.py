@@ -40,6 +40,7 @@ The output tokens can be:
 - Kept as (B, N, embed_dim) for the CLS token + MLP head (Stage 3).
 """
 import torch.nn as nn
+import torch
 from torch import Tensor
 from models.cvt.conv_embed import ConvTokenEmbedding
 from models.cvt.cvt_block import CvTBlock
@@ -138,7 +139,7 @@ class CvTStage(nn.Module):
         self.depth = depth
         self.num_heads = num_heads
 
-    def forward(self, x: Tensor) -> tuple[Tensor, tuple[int, int]]:
+    def forward(self, x: Tensor, cls_token: Tensor | None = None) -> tuple[Tensor, tuple[int, int]]:
         """
         Run the stage: embed -> refine through blocks -> return tokens.
 
@@ -146,6 +147,7 @@ class CvTStage(nn.Module):
             x:  Input tensor of shape (B, in_channels, H_in, W_in). For Stage 1 this is the raw image batch.
                 For Stages 2–3 it is the previous stage's token sequence reshaped back to a 2-D feature map by the
                 parent `CvT` module.
+            cls_token: A single learnable vector prepended to the Stage-3 token sequence.
 
         Returns:
             A tuple (tokens, spatial_shape) where:
@@ -157,11 +159,18 @@ class CvTStage(nn.Module):
         # h, w : output spatial dims (needed by ConvAttention inside blocks)
         tokens, (h, w) = self.embed(x)
 
+        # --------------------- CLS token injection ----------------------
+        has_cls_token = cls_token is not None
+        if has_cls_token:
+            B = tokens.shape[0]
+            cls = cls_token.expand(B, -1, -1) if cls_token.shape[0] == 1 else cls_token
+            tokens = torch.cat([cls, tokens], dim=1)
+
         # ----------- CvT Blocks: refine token representations -----------
         # nn.Sequential cannot forward extra args, so we iterate manually. Each block needs (tokens, h, w) because
         # ConvAttention reshapes the sequence back to (B, C, H, W) for its depthwise conv projections.
         for block in self.blocks:
-            tokens = block(tokens, h, w)
+            tokens = block(tokens, h, w, has_cls_token=has_cls_token)
 
         return tokens, (h, w)
 
