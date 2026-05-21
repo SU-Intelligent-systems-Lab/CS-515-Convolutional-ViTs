@@ -532,13 +532,13 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         # Train
         tr_loss, tr_top1, tr_top5 = train_one_epoch(model, train_loader, optimizer, augmenter, device, cfg, scaler,
                                                     epoch)
-        logger.info(f"=> Training loss: {tr_loss:.4f} - Training Top-1 Accuracy: {tr_top1:.4f} - "
-                    f"Training Top-5 Accuracy: {tr_top5:.4f}")
+        logger.info(f"=> Training loss: {tr_loss:.4f} - Training Top-1 Accuracy: {tr_top1:.4f}% - "
+                    f"Training Top-5 Accuracy: {tr_top5:.4f}%")
 
         # Validate
         val_loss, val_top1, val_top5 = validate(model, val_loader, val_criterion, device, cfg, epoch)
-        logger.info(f"=> Validation loss: {val_loss:.4f} - Validation Top-1 Accuracy: {val_top1:.4f} - "
-                    f"Validation Top-5 Accuracy: {val_top5}")
+        logger.info(f"=> Validation loss: {val_loss:.4f} - Validation Top-1 Accuracy: {val_top1:.4f}% - "
+                    f"Validation Top-5 Accuracy: {val_top5:.4f}%")
 
         # LR step
         scheduler.step()

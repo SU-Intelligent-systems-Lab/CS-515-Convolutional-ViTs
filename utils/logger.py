@@ -21,11 +21,12 @@ from pathlib import Path
 from typing import Optional
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 
-_DEFAULT_FMT = "[%(asctime)s] [%(levelname)-8s] [%(name)s:%(lineno)-4d] %(message)s"
+# _DEFAULT_FMT = "[%(asctime)s] [%(levelname)-8s] [%(name)s:%(lineno)-4d] %(message)s"
+_DEFAULT_FMT = "[%(asctime)s] [%(levelname)-8s] [%(name)s] %(message)s"
 _DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 # Maps string names (from argparse) -> logging levels.
@@ -38,9 +39,9 @@ LEVEL_MAP: dict[str, int] = {
 }
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 
 def _make_formatter(fmt: str = _DEFAULT_FMT, date_fmt: str = _DATE_FMT) -> logging.Formatter:
     """
@@ -56,11 +57,8 @@ def _make_formatter(fmt: str = _DEFAULT_FMT, date_fmt: str = _DATE_FMT) -> loggi
     return logging.Formatter(fmt=fmt, datefmt=date_fmt)
 
 
-def _make_stream_handler(
-    stream=sys.stdout,
-    level: int = logging.DEBUG,
-    fmt: str = _DEFAULT_FMT,
-) -> logging.StreamHandler:
+def _make_stream_handler(stream=sys.stdout, level: int = logging.DEBUG,
+                         fmt: str = _DEFAULT_FMT) -> logging.StreamHandler:
     """
     Create a stream handler pointed at *stream*.
 
@@ -78,11 +76,7 @@ def _make_stream_handler(
     return handler
 
 
-def _make_file_handler(
-    log_file: Path,
-    level: int = logging.DEBUG,
-    fmt: str = _DEFAULT_FMT,
-) -> logging.FileHandler:
+def _make_file_handler(log_file: Path, level: int = logging.DEBUG, fmt: str = _DEFAULT_FMT) -> logging.FileHandler:
     """
     Create a file handler that appends to *log_file*.
 
@@ -125,18 +119,12 @@ def _level_from_str(level_str: str) -> int:
     return LEVEL_MAP[key]
 
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 # Public Methods
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 
-def setup_logger(
-    name: str = "convvits",
-    level: int = logging.INFO,
-    log_file: Optional[str | Path] = None,
-    fmt: str = _DEFAULT_FMT,
-    propagate: bool = False,
-    rank: int = 0,
-) -> logging.Logger:
+def setup_logger(name: str = "convvits", level: int = logging.INFO, log_file: Optional[str | Path] = None,
+                 fmt: str = _DEFAULT_FMT, propagate: bool = False, rank: int = 0) -> logging.Logger:
     """
     Configure and return a named logger for the project.
 
