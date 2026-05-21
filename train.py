@@ -354,8 +354,8 @@ def validate(model: nn.Module, loader: torch.utils.data.DataLoader, criterion: n
     results = val_metrics.compute()
 
     logger.info(f"{'=' * 10} Validation Metrics {'=' * 10}")
-    logger.info(f"Epoch {epoch} => loss={loss_meter.avg:.4f}, Top-1={results['top1']:.4f}%, "
-                f"Top-5={results['top5']:.4f}%, Precision={results['precision']:.4f}, "
+    logger.info(f"Epoch {epoch} => loss={loss_meter.avg:.4f}, Top-1={results['top1']:.2f}%, "
+                f"Top-5={results['top5']:.2f}%, Precision={results['precision']:.4f}, "
                 f"Recall={results['recall']:.4f}, F1={results['f1']:.4f}")
     logger.info("=" * 40)
     return loss_meter.avg, results["top1"], results["top5"]
@@ -582,7 +582,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         tr_loss, tr_top1, tr_top5 = train_one_epoch(model, train_loader, optimizer, augmenter, device, cfg, scaler,
                                                     epoch)
         logger.info(f"{'=' * 11} Training Metrics {'=' * 11}")
-        logger.info(f"=> Training loss: {tr_loss:.4f} - Training Top-1 Accuracy: {tr_top1:.4f}% - "
+        logger.info(f"=> Training loss: {tr_loss:.4f}, Training Top-1 Accuracy: {tr_top1:.4f}%, "
                     f"Training Top-5 Accuracy: {tr_top5:.4f}%")
 
         # Validate
@@ -625,7 +625,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
                 filename="best.pt",
                 keep_last=cfg.log.keep_last,
             )
-            logger.info(f"Best model updated (val_loss={best_val_loss:.4f}, val_top1={best_val_top1:.4f}%)")
+            logger.info(f"Best model updated (val_loss={best_val_loss:.4f}, val_top1={best_val_top1:.2f}%)")
 
         # Periodic epoch checkpoint
         if cfg.log.save_every > 0 and epoch % cfg.log.save_every == 0:
@@ -657,7 +657,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
     # Restore best weights into the model before returning
     if best_weights is not None:
         model.load_state_dict(best_weights)
-        logger.info(f"Training complete. Best val_loss={best_val_loss:.4f}, val_top-1={best_val_top1:.4f}%")
+        logger.info(f"Training complete. Best val_loss={best_val_loss:.4f}, val_top-1={best_val_top1:.2f}%")
 
     # Save plots
     plot_learning_curves(history)
