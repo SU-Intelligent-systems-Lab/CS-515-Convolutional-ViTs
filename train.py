@@ -35,11 +35,10 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.amp import GradScaler, autocast
 from tqdm import tqdm
-from data import build_tinyimagenet_dataloaders
+from data import build_dataloaders
 from data.mixup_cutmix import MixUpCutMix
 from parameters import Config
-from utils import measure_time, get_logger, ClassificationMetrics
-from utils.visualization import plot_learning_curves, plot_training_dashboard
+from utils import measure_time, get_logger, ClassificationMetrics, plot_learning_curves, plot_training_dashboard
 
 
 logger = get_logger()
@@ -473,7 +472,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
     model = model.to(device)
 
     # Getting Data
-    loaders = build_tinyimagenet_dataloaders(cfg)
+    loaders = build_dataloaders(cfg)
     train_loader = loaders["train"]
     val_loader = loaders["val"]
 
