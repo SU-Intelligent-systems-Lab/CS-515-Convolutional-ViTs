@@ -46,7 +46,7 @@ from functools import partial
 import torch
 import torch.nn as nn
 from torch import Tensor
-from models.cvt.stage import CvTStage
+from models.cvt.cvt_stage import CvTStage
 from parameters import Config
 
 
