@@ -639,7 +639,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
                     "best_val_loss": best_val_loss,
                     "best_val_top1": best_val_top1,
                     "history": history,
-                    "cfg": cfg,
+                    "cfg": dataclasses.asdict(cfg),
                 },
                 save_dir=save_dir,
                 filename=f"epoch_{epoch:03d}.pt",
