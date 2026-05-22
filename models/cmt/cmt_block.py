@@ -49,10 +49,11 @@ class CMTBlock(nn.Module):
 
     Args:
         dim: Token embedding dimension C for this stage.
-        num_heads: Number of attention heads. Must evenly divide `dim`.
-        sr_ratio: Spatial reduction factor for Keys and Values in LMHSA. `sr_ratio=1` means no reduction (standard 
-                  MHSA). Typical CMT-Ti values: 8, 4, 2, 1 for stages 1–4.
-        mlp_ratio: Hidden-dimension expansion factor for the IRFFN: `hidden = int(dim × mlp_ratio)`.
+        num_heads: Number of attention heads. Fixed per stage in the paper: (1, 2, 4, 8) for stages 1–4 across all
+                   variants.
+        sr_ratio: Spatial reduction factor for Keys and Values in LMHSA. Fixed per stage: (8, 4, 2, 1) for stages 1–4
+                  across all variants. `sr_ratio=1` means no reduction (standard  MHSA).
+        mlp_ratio: Hidden-dimension expansion factor R for the IRFFN: `hidden = int(dim × mlp_ratio)`.
         qkv_bias: Learnable bias in the Q, KV, and output projections of LMHSA.
         drop: Dropout probability for IRFFN output and LMHSA output projections.
         attn_drop: Dropout probability on the attention weight matrix inside LMHSA.
