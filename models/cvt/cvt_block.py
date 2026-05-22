@@ -47,7 +47,7 @@ import torch.nn as nn
 from torch import Tensor
 from models.cvt.conv_attention import ConvAttention
 from models.cvt.drop_path import DropPath
-from models.cvt.cvt_mlp import CvTFFN
+from models.cvt.cvt_mlp import CvT_FFN
 
 
 class CvTBlock(nn.Module):
@@ -104,7 +104,7 @@ class CvTBlock(nn.Module):
         self.norm2 = nn.LayerNorm(embed_dim)
 
         # Position-wise feed-forward network
-        self.ffn = CvTFFN(in_features=embed_dim, mlp_ratio=mlp_ratio, drop=drop)
+        self.ffn = CvT_FFN(in_features=embed_dim, mlp_ratio=mlp_ratio, drop=drop)
 
         # Stochastic depth (identity when drop_path == 0)
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()

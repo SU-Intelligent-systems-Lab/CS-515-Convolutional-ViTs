@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch import Tensor
 
 
-class CvTFFN(nn.Module):
+class CvT_FFN(nn.Module):
     """
     Position-wise Feed-Forward Network (MLP) applied to each token.
 
@@ -32,7 +32,7 @@ class CvTFFN(nn.Module):
         - Output: (B, N, C) - shape is unchanged.
 
     Example:
-        >>> ffn = CvTFFN(in_features=64, mlp_ratio=4.0, drop=0.1)
+        >>> ffn = CvT_FFN(in_features=64, mlp_ratio=4.0, drop=0.1)
         >>> x = torch.randn(2, 256, 64)
         >>> ffn(x).shape
         torch.Size([2, 256, 64])
