@@ -380,7 +380,6 @@ class LogConfig:
         save_dir: Directory where model checkpoints are saved.
         save_every: Save a checkpoint every N epochs (0 = only best).
         keep_last: Number of most-recent checkpoints to retain.
-        tensorboard: Enable TensorBoard summary writing.
         log_interval: Log training metrics every N batches.
     """
     log_level: str = "info"
@@ -389,7 +388,6 @@ class LogConfig:
     save_dir: str = "checkpoints"
     save_every: int = 10
     keep_last: int = 3
-    tensorboard: bool = False
     log_interval: int = 50
     log_level_int: int = field(init=False)
 
@@ -414,7 +412,6 @@ class LogConfig:
             save_dir=ns.save_dir,
             save_every=ns.save_every,
             keep_last=ns.keep_last,
-            tensorboard=ns.tensorboard,
             log_interval=ns.log_interval,
         )
 
@@ -589,8 +586,6 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="Save a checkpoint every N epochs (0 = best only).")
     lg.add_argument("--keep-last", type=int, default=3,
                     help="Number of recent checkpoints to retain.")
-    lg.add_argument("--tensorboard", action=argparse.BooleanOptionalAction, default=False,
-                    help="Write TensorBoard summaries.")
     lg.add_argument("--log-interval", type=int, default=50,
                     help="Log training metrics every N batches.")
 

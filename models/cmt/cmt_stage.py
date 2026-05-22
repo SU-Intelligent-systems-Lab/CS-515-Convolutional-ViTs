@@ -132,11 +132,11 @@ class CMTStage(nn.Module):
 
         Returns:
             A tuple (tokens, spatial_shape) where:
-            - `tokens`: (B, H_out * W_out, channel_dim)
+            - `tokens`: (B, H_out * W_out, embed_dim)
             - `spatial_shape`: (H_out, W_out) needed by the next stage and by CMT's `forward` for the feature-map
                                reshape between stages.
         """
-        # PatchEmbedding: feature map (B, in_dim, H, W) -> token sequence (B, N, channel_dim),  (H_out, W_out)
+        # PatchEmbedding: feature map (B, in_dim, H, W) -> token sequence (B, N, embed_dim),  (H_out, W_out)
         tokens, (H, W) = self.patch_embed(x)
 
         # CMTBlocks: (B, N, C) → (B, N, C), spatial (H, W) unchanged
@@ -166,4 +166,4 @@ class CMTStage(nn.Module):
 
     def extra_repr(self) -> str:
         """Compact summary shown in `print(model)`."""
-        return f"channel_dim={self.channel_dim}, depth={self.depth}, num_heads={self.num_heads}, sr_ratio={self.sr_ratio}"
+        return f"embed_dim={self.embed_dim}, depth={self.depth}, num_heads={self.num_heads}, sr_ratio={self.sr_ratio}"
