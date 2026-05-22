@@ -18,7 +18,7 @@ the convolution redundant.
 
 The output format is a token sequence (B, N, C) plus the spatial shape (H_out, W_out), which is the exact format
 expected by CMT Blocks. The spatial shape must be carried explicitly so that the depthwise convolutions inside LPU,
-SR-MHSA's spatial reduction, and IRFFN can reconstruct the 2-D layout.
+LMHSA's spatial reduction, and IRFFN can reconstruct the 2-D layout.
 """
 import torch.nn as nn
 from torch import Tensor

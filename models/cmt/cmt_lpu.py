@@ -93,7 +93,7 @@ class CMT_LPU(nn.Module):
 
         # 1. Sequence -> spatial feature map
         # (B, N, C) -> (B, C, H, W)
-        feat = x.transpose(1, 2).reshape(B, C, H, W)
+        feat = x.permute(0, 2, 1).reshape(B, C, H, W)
 
         # 2. Depthwise 3x3 convolution.
         # Each channel is filtered by its own independent 3x3 kernel.
@@ -102,7 +102,7 @@ class CMT_LPU(nn.Module):
 
         # 3. Spatial feature map -> sequence
         # (B, C, H, W) -> (B, C, N) -> (B, N, C)
-        feat = feat.reshape(B, C, N).transpose(1, 2)
+        feat = feat.flatten(2).permute(0, 2, 1)
 
         # 4. Residual addition: LPU(X) = DW-Conv(X) + X
         # The residual lets the block learn an incremental local correction on top of what the token already represents,
