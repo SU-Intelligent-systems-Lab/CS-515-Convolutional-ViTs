@@ -174,7 +174,7 @@ class ModelConfig:
         cvt_kernel_size_proj: Kernel size for the conv Q/K/V projections.
         cvt_stride_kv: Stride applied to K and V projections (reduces seq len).
         qkv_bias: Whether to add a learnable bias to Q/K/V CvT Conv. projections or CMT linear projections
-                  inside SR-MHSA.
+                  inside LMHSA.
         drop_rate: Dropout probability on CvT FFN outputs or CMT IRFFN outputs.
         attn_drop_rate: Dropout probability on attention weights.
         drop_path_rate: Maximum stochastic-depth drop probability (linearly increased across all blocks).
