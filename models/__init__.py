@@ -1,6 +1,7 @@
 from typing import Any
 from torch import nn
 from models.cvt import CvT
+from models.cmt import CMT
 from parameters import Config
 
 
@@ -19,12 +20,27 @@ def build_cvt(config: Config) -> CvT:
     """
     return CvT(config)
 
+def build_cmt(config: Config) -> CMT:
+    """
+    Construct a `CMT` model from a `Config`.
+
+    A thin factory wrapper that makes `main.py` read cleanly:
+    `model = build_cmt(cfg)` rather than `CMT(cfg)`.
+
+    Args:
+        config: Populated `Config` dataclass.
+
+    Returns:
+        Initialised `CMT` instance.
+    """
+    return CMT(config)
+
 
 # Model Registry: Maps model name strings -> factory functions. Each factory receives the full `Config` and
 #                 returns an `nn.Module`.
 _MODEL_REGISTRY: dict[str, Any] = {
     "cvt": build_cvt,
-    # "cmt": build_cmt,
+    "cmt": build_cmt,
 }
 
 
@@ -56,4 +72,6 @@ __all__ = [
     "build_model",
     "CvT",
     "build_cvt",
+    "CMT",
+    "build_cmt"
 ]
