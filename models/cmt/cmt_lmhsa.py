@@ -39,7 +39,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 
-class LMHSA(nn.Module):
+class CMT_LMHSA(nn.Module):
     """
     Lightweight Multi-Head Self-Attention for CMT.
 
@@ -61,7 +61,7 @@ class LMHSA(nn.Module):
 
     Example:
         >>> import torch
-        >>> attn = LMHSA(dim=46, num_heads=1, sr_ratio=8)
+        >>> attn = CMT_LMHSA(dim=46, num_heads=1, sr_ratio=8)
         >>> x = torch.randn(2, 256, 46)    # stage 1: 16x16 tokens
         >>> out = attn(x, H=16, W=16)
         >>> out.shape
@@ -90,8 +90,7 @@ class LMHSA(nn.Module):
         # Only instantiated when sr_ratio > 1; when sr_ratio=1 (stage 4), K and V are computed directly from the
         # full sequence.
         if sr_ratio > 1:
-            self.sr = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=sr_ratio, stride=sr_ratio,
-                                groups=dim, bias=False)     # No Bias because LayerNorm after provides the affine shift
+            self.sr = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=sr_ratio, stride=sr_ratio, groups=dim)
             self.sr_norm = nn.LayerNorm(dim)
 
         # 3. Key + Value projection (reduced resolution): Single linear maps the reduced sequence to 2*dim, then split
