@@ -3,7 +3,7 @@ CMT Convolutional Stem.
 
 Position in the CMT architecture
 ----------------------------------
-The stem is the very first component that sees the raw input image. Before any transformer block, patch aggregation,
+The stem is the very first component that sees the raw input image. Before any transformer block, patch embedding,
 or attention mechanism, the stem performs an initial spatial downsampling and channel projection, handing a compact
 feature map to Stage 1.
 
@@ -103,7 +103,9 @@ class CMTStem(nn.Module):
         self.stem_conv3 = nn.Conv2d(stem_channels, stem_channels, kernel_size=3, stride=1, padding=1, bias=True)
 
         # BatchNorm layers for each conv. Note that the number of channels is `stem_channels` for all three layers.
-        self.bn = nn.BatchNorm2d(stem_channels, eps=1e-5)
+        self.bn1 = nn.BatchNorm2d(stem_channels, eps=1e-5)
+        self.bn2 = nn.BatchNorm2d(stem_channels, eps=1e-5)
+        self.bn3 = nn.BatchNorm2d(stem_channels, eps=1e-5)
 
         # Shared activation - GELU is used throughout CMT (vs. ReLU in plain CNNs).
         self.activation = nn.GELU()
@@ -119,13 +121,13 @@ class CMTStem(nn.Module):
             Feature map of shape (B, stem_channels, H/2, W/2).
         """
         # Conv1: (B, C_in, H, W) -> (B, stem_channels, H/2, W/2)
-        x = self.bn(self.activation(self.stem_conv1(x)))
+        x = self.bn1(self.activation(self.stem_conv1(x)))
 
         # Conv2: (B, stem_channels, H/2, W/2) -> (B, stem_channels, H/2, W/2)
-        x = self.bn(self.activation(self.stem_conv2(x)))
+        x = self.bn2(self.activation(self.stem_conv2(x)))
 
         # Conv3: (B, stem_channels, H/2, W/2) -> (B, stem_channels, H/2, W/2)
-        x = self.bn(self.activation(self.stem_conv3(x)))
+        x = self.bn3(self.activation(self.stem_conv3(x)))
 
         return x
 

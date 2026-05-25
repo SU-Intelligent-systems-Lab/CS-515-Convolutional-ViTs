@@ -76,7 +76,9 @@ class CMT_IRFFN(nn.Module):
 
         # Non-linear activations, normalizations, and regularization
         self.act = nn.GELU()
-        self.bn = nn.BatchNorm2d(self.hidden)
+        self.bn1 = nn.BatchNorm2d(self.hidden)
+        self.bn2 = nn.BatchNorm2d(self.hidden)
+
         self.final_bn = nn.BatchNorm2d(self.dim)
         self.drop = nn.Dropout(drop)
 
@@ -110,13 +112,13 @@ class CMT_IRFFN(nn.Module):
         # (B, C, H, W) -> (B, C_h, H, W)
         x = self.conv1(x)
         x = self.act(x)
-        x = self.bn(x)
+        x = self.bn1(x)
 
         # 3. Depthwise Convolution + Inverted Local Residual
         # (B, C_h, H, W) + (B, C_h, H, W) -> (B, C_h, H, W)
         x = self.proj(x) + x
         x = self.act(x)
-        x = self.bn(x)
+        x = self.bn2(x)
 
         # 4. Linear Channel Compression & Normalization
         # (B, C_h, H, W) -> (B, C, H, W)

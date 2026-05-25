@@ -90,7 +90,8 @@ class CMT_LMHSA(nn.Module):
         # Only instantiated when sr_ratio > 1; when sr_ratio=1 (stage 4), K and V are computed directly from the
         # full sequence.
         if sr_ratio > 1:
-            self.sr = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=sr_ratio, stride=sr_ratio, groups=dim)
+            self.sr = nn.Conv2d(in_channels=dim, out_channels=dim, kernel_size=sr_ratio, stride=sr_ratio, groups=dim,
+                                bias=False)
             self.sr_norm = nn.LayerNorm(dim)
 
         # 3. Key + Value projection (reduced resolution): Single linear maps the reduced sequence to 2*dim, then split
