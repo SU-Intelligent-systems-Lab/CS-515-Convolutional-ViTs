@@ -502,7 +502,7 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="FFN output dropout probability.")
     m.add_argument("--attn-drop-rate", type=float, default=0.0,
                    help="Attention weight dropout probability.")
-    m.add_argument("--drop-path-rate", type=float, default=0.1,
+    m.add_argument("--drop-path-rate", type=float, default=0.05,
                    help="Max stochastic-depth drop probability.")
     m.add_argument("--init-weights", type=str, default="trunc_normal",
                    choices=["trunc_normal", "kaiming"],
@@ -514,14 +514,14 @@ def _build_parser() -> argparse.ArgumentParser:
     t = parser.add_argument_group("Training")
     t.add_argument("--epochs", type=int, default=300, help="Total training epochs.")
     t.add_argument("--batch-size", type=int, default=128, help="Per-GPU batch size.")
-    t.add_argument("--learning-rate", type=float, default=5e-4, help="Peak learning rate.")
-    t.add_argument("--min-lr", type=float, default=1e-6, help="Minimum LR at end of cosine decay.")
+    t.add_argument("--learning-rate", type=float, default=7e-4, help="Peak learning rate.")
+    t.add_argument("--min-lr", type=float, default=1e-5, help="Minimum LR at end of cosine decay.")
     t.add_argument("--weight-decay", type=float, default=0.05, help="AdamW weight decay.")
     t.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1.")
     t.add_argument("--beta2", type=float, default=0.999, help="AdamW beta2.")
     t.add_argument("--grad-clip", type=float, default=1.0,
                    help="Max gradient norm (0 disables clipping).")
-    t.add_argument("--warmup-epochs", type=int, default=20, help="Linear LR warm-up epochs.")
+    t.add_argument("--warmup-epochs", type=int, default=10, help="Linear LR warm-up epochs.")
     t.add_argument("--scheduler", type=str, default="cosine", choices=["cosine", "step"],
                    help="LR scheduler type.")
     t.add_argument("--step-size", type=int, default=30, help="Epoch step size for StepLR.")
@@ -534,7 +534,7 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Path to checkpoint to resume from.")
     t.add_argument("--mode", type=str, default="both", choices=["train", "test", "both", "profile"],
                    help="Execution mode.")
-    t.add_argument("--early-stopping-patience", type=int, default=20,
+    t.add_argument("--early-stopping-patience", type=int, default=40,
                    help="Stop if val loss does not improve for N epochs (0 disables early stopping).")
     t.add_argument("--early-stopping-min-delta", type=float, default=1e-4,
                    help="Minimum val-loss improvement to count as progress.")
@@ -560,11 +560,11 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Enable RandAugment / MixUp augmentation.")
     d.add_argument("--randaugment-n", type=int, default=2,
                    help="RandAugment number of operations.")
-    d.add_argument("--randaugment-m", type=int, default=9,
+    d.add_argument("--randaugment-m", type=int, default=7,
                    help="RandAugment magnitude.")
-    d.add_argument("--mixup-alpha", type=float, default=0.8,
+    d.add_argument("--mixup-alpha", type=float, default=0.25,
                    help="MixUp alpha (0 disables).")
-    d.add_argument("--cutmix-alpha", type=float, default=1.0,
+    d.add_argument("--cutmix-alpha", type=float, default=0.25,
                    help="CutMix alpha (0 disables).")
     d.add_argument("--mean", type=float, nargs=3, default=None, metavar=("R", "G", "B"),
                    help="Override normalization mean. Defaults to dataset registry value.")
