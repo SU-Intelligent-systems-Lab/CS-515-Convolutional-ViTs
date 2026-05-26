@@ -22,7 +22,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.utils.data import DataLoader
-from data import build_dataloaders
+from data import build_dataloaders, get_class_name_index_map
 from parameters import Config
 from utils import (ClassificationMetrics, measure_time, get_logger, extract_attention_weights, plot_attention_maps,
                    plot_prediction_gallery)
@@ -174,12 +174,16 @@ def run_test(model: nn.Module, cfg: Config, device: torch.device, checkpoint_pat
         for i, acc in enumerate(per_cls.tolist()):
             logger.info(f"\tClass {i}: {acc:.2f}")
 
+    model_name = f"{cfg.model.model_name}-{cfg.model.cmt_variant}" \
+                 if cfg.model.model_name == "cmt" else cfg.model.model_name
+
     # Visualizations
     if output["gallery"] is not None:
         logger.info("Generating prediction gallery...")
         g = output["gallery"]
         plot_prediction_gallery(images=g["images"], logits=g["logits"], targets=g["targets"],
-                                mean=cfg.data.mean, std=cfg.data.std)
+                                mean=cfg.data.mean, std=cfg.data.std, model_name=model_name,
+                                class_names=get_class_name_index_map(cfg))
 
     if plot_attention_flag:
         NUM_IMAGES_TO_VISUALIZE = 4

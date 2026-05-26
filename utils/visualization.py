@@ -14,7 +14,7 @@ Functions
 """
 import datetime
 import os
-from typing import Optional
+from typing import Optional, Dict
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
@@ -144,8 +144,8 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
 
 
 def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mean: tuple[float, ...],
-                            std: tuple[float, ...], class_names: Optional[list[str]] = None, n_cols: int = 6,
-                            n_rows: int = 4, save_path: str = f"prediction_gallery_{_ts()}") -> None:
+                            std: tuple[float, ...], model_name: str, class_names: Optional[Dict[int, str]] = None,
+                            n_cols: int = 6, n_rows: int = 4, save_path: str = f"prediction_gallery_{_ts()}") -> None:
     """
     Image grid showing predictions with colored borders and confidence bars.
 
@@ -158,9 +158,10 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
         images: (N, C, H, W) normalized float tensor.
         logits: (N, num_classes) float tensor.
         targets: (N, ) long tensor of ground-truth labels.
-        class_names: Optional class name list.
+        class_names: Optional class name - Class index map.
         mean: Channel-wise mean vector used to de-normalize the input image.
         std: Channel-wise standard deviation vector used to de-normalize the image.
+        model_name: Model name string.
         n_cols: Grid columns.
         n_rows: Grid rows.
         save_path: Destination filename string.
@@ -180,11 +181,15 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
     imgs_disp = (images * _std + _mean).clamp(0, 1)
 
     def lbl(idx: int) -> str:
-        return class_names[idx][:16] if class_names else str(idx)
+        label = str(idx)
+        if class_names:
+            # label = f"({idx}) {class_names[idx] if len(class_names[idx]) < 10 else f'{class_names[idx][:10]}...'}"
+            label = f"{class_names[idx] if len(class_names[idx]) < 10 else f'{class_names[idx][:10]}...'}"
+        return label
 
     # Expanded vertical spacing slightly (from 3.2 to 3.6) to make room for confidence bars
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.4, n_rows * 3.6))
-    fig.suptitle("Prediction Gallery (✓ correct  /  ✗ wrong)", fontsize=18, fontweight="bold")
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2, n_rows * 3))
+    fig.suptitle(f"{model_name.upper()} - Prediction Gallery (✓ correct  /  ✗ wrong)", fontsize=18, fontweight="bold")
     axes = axes.flatten()
 
     for i, ax in enumerate(axes):
@@ -215,7 +220,8 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
             spine.set_edgecolor(col)
             spine.set_linewidth(3.5)
 
-        ax.set_title(f"{sym} True: {lbl(tgt)}\n  Predicted: {lbl(pred)}", fontsize=9, color=col, pad=4, fontweight="semibold")
+        ax.set_title(f"{sym}\n True: {lbl(tgt)}\n Pred.: {lbl(pred)}", fontsize=10, color=col, pad=4,
+                     fontweight="semibold")
 
         # Anchor the confidence bar context safely inside subplot footprint
         # Shifted location indices safely inside the subplot boundaries
@@ -228,10 +234,10 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
         text_x = conf * 50 if conf > 0.3 else 50
         text_col = "white" if conf > 0.3 else col
 
-        ax_ins.text(text_x, 0, f"{conf * 100:.0f}%", ha="center", va="center", fontsize=7.5, color=text_col,
+        ax_ins.text(text_x, 0, f"{conf * 100:.0f}%", ha="center", va="center", fontsize=10, color=text_col,
                     fontweight="bold")
 
-    plt.subplots_adjust(hspace=0.45, wspace=0.3)
+    plt.subplots_adjust(hspace=0.3, wspace=0.3)
     save_fig(save_path, tight_layout=False)
     plt.close(fig)
 
