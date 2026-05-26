@@ -83,9 +83,16 @@ class TinyImageNetDataset(Dataset):
                 f"Download from http://cs231n.stanford.edu/tiny-imagenet-200.zip"
             )
 
-        self.class_to_idx: dict[str, int] = class_to_idx if class_to_idx is not None else self._build_class_map()
+        self.class_to_idx: dict[str, int] = class_to_idx if class_to_idx is not None else self._build_class_idx_map()
 
         self.idx_to_class: dict[int, str] = {v: k for k, v in self.class_to_idx.items()}
+
+        self.class_to_readable_class: dict[str, str] = self._build_class_to_readable_class_map()
+
+        self.idx_to_readable_class: dict[int, str] = {k: self.class_to_readable_class[v] for k, v in
+                                                      self.idx_to_class.items()}
+
+        self.readable_class_to_idx: dict[str, int] = {v: k for k, v in self.idx_to_readable_class.items()}
 
         self.samples: list[tuple[Path, int]] = (
             self._load_train_samples() if split == "train" else self._load_val_samples()
@@ -112,18 +119,45 @@ class TinyImageNetDataset(Dataset):
             image = self.transform(image)
         return image, label
 
-    def _build_class_map(self) -> dict[str, int]:
+    def _build_class_idx_map(self) -> dict[str, int]:
         """
-        Build `{class_id: int}` from `train/` subdirectory names.
+        Build `{class_id: int}` from `wnids.txt` file   .
 
         Returns:
             Alphabetically sorted mapping of class IDs to integers 0–199.
         """
-        train_dir = self.root / "train"
-        if not train_dir.exists():
-            raise FileNotFoundError(f"train/ directory not found under {self.root}")
-        classes = sorted(d.name for d in train_dir.iterdir() if d.is_dir())
-        return {cls: i for i, cls in enumerate(classes)}
+        wnids_file = self.root / "wnids.txt"
+        if not wnids_file.exists():
+            raise FileNotFoundError(f"wnids.txt not found under {self.root}")
+        with open(wnids_file, "r") as f_wnids:
+            wnids = [line.strip() for line in f_wnids]
+        return {cls: i for i, cls in enumerate(sorted(wnids))}
+
+    def _build_class_to_readable_class_map(self) -> dict[str, str]:
+        """
+        Build `{class_id: readable_label}` mapping from `wnids.txt` and `words.txt`.
+
+        Returns:
+            Mapping of class IDs to human-readable labels.
+        """
+        wnids_file = self.root / "wnids.txt"
+        words_file = self.root / "words.txt"
+
+        if not wnids_file.exists() or not words_file.exists():
+            raise FileNotFoundError(f"wnids.txt or words.txt not found under {self.root}")
+
+        # Build mapping from class ID to human-readable label
+        class_to_readable: dict[str, str] = {}
+        with open(wnids_file, "r") as f_wnids, open(words_file, "r") as f_words:
+            wnids = [line.strip() for line in f_wnids]
+            for line in f_words:
+                parts = line.strip().split("\t")
+                if len(parts) < 2:
+                    continue
+                class_id, readable_label = parts[0], parts[1]
+                if class_id in wnids:
+                    class_to_readable[class_id] = readable_label
+        return class_to_readable
 
     def _load_train_samples(self) -> list[tuple[Path, int]]:
         """
