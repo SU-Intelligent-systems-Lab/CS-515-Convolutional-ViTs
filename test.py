@@ -198,9 +198,6 @@ def run_test(model: nn.Module, cfg: Config, device: torch.device, checkpoint_pat
         # 2. Register the forward hooks onto the attention layers
         attn_store, hooks = extract_attention_weights(model)
 
-        # Expected K/V spatial shapes per stage for CvT (accounting for stride_kv=2)
-        kv_spatial_shapes = [(8, 8), (4, 4), (2, 2)]
-
         # 3. Loop through the images one by one
         for idx in range(n_images_to_plot):
             single_img = images[idx]  # Shape: (C, H, W)
@@ -220,9 +217,9 @@ def run_test(model: nn.Module, cfg: Config, device: torch.device, checkpoint_pat
             plot_attention_maps(
                 image=single_img,
                 attn_store=attn_store,
-                spatial_shapes=kv_spatial_shapes,
                 mean=cfg.data.mean,
                 std=cfg.data.std,
+                model_name=model_name,
                 save_path=unique_save_path,
             )
 

@@ -512,6 +512,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ------------------------------- Training --------------------------------
     t = parser.add_argument_group("Training")
+    t.add_argument("--mode", type=str, default="test", choices=["train", "test", "both", "profile"],
+                   help="Execution mode.")
     t.add_argument("--epochs", type=int, default=300, help="Total training epochs.")
     t.add_argument("--batch-size", type=int, default=128, help="Per-GPU batch size.")
     t.add_argument("--learning-rate", type=float, default=7e-4, help="Peak learning rate.")
@@ -532,8 +534,6 @@ def _build_parser() -> argparse.ArgumentParser:
     t.add_argument("--seed", type=int, default=42, help="Global random seed.")
     t.add_argument("--resume", type=str, default=None,
                    help="Path to checkpoint to resume from.")
-    t.add_argument("--mode", type=str, default="both", choices=["train", "test", "both", "profile"],
-                   help="Execution mode.")
     t.add_argument("--early-stopping-patience", type=int, default=40,
                    help="Stop if val loss does not improve for N epochs (0 disables early stopping).")
     t.add_argument("--early-stopping-min-delta", type=float, default=1e-4,

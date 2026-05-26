@@ -242,15 +242,15 @@ def plot_prediction_gallery(images: Tensor, logits: Tensor, targets: Tensor, mea
     plt.close(fig)
 
 
-def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_shapes: list[tuple[int, int]],
-                        mean: tuple[float, ...], std:  tuple[float, ...],
+def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor],
+                        mean: tuple[float, ...], std: tuple[float, ...], model_name: str,
                         save_path: str = f"attention_maps", add_ts: bool = True) -> None:
     """
-    Overlay CvT attention heatmaps on the input image for each stage.
+    Overlay Model attention heatmaps on the input image for each stage.
     For each architectural stage, averages attention weights across all heads and query positions, maps the 1-D
     sequence back into its 2-D spatial (H_kv, W_kv) feature layout, upscales it to match the input resolution,
     and overlays it semi-transparently.
-    This explicitly visualizes "What spatial regions does CvT attend to at each resolution scale?"
+    This explicitly visualizes "What spatial regions does the model attend to at each resolution scale?"
 
     Layout:
         One row per stage. Columns: [Original Image | Raw Heatmap | Translucent Overlay]
@@ -259,9 +259,9 @@ def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_sh
         image: Single input image tensor of shape (C, H, W), normalized.
         attn_store: Dictionary mapping module names to attention tensors of shape (1, heads, N_q, N_kv) captured via
                     forward hooks.
-        spatial_shapes: List of expected (H, W) spatial configurations per stage, e.g., [(16, 16), (8, 8), (4, 4)].
         mean: Channel-wise mean vector used to de-normalize the input image.
         std: Channel-wise standard deviation vector used to de-normalize the image.
+        model_name: Model name string.
         save_path: Destination filename string.
         add_ts: Flag to add timestamp to the destination filename
     """
@@ -270,53 +270,87 @@ def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_sh
         return
 
     # 1. De-normalize and prepare image for visualization
+    # Convert the normalized tensor back into RGB image space so the attention
+    # overlays are human-interpretable instead of being drawn on standardized values.
     _m = torch.tensor(mean).view(3, 1, 1)
     _s = torch.tensor(std).view(3, 1, 1)
     img_disp = (image.cpu() * _s + _m).clamp(0, 1).permute(1, 2, 0).numpy()
     H, W = img_disp.shape[:2]
 
     # 2. Structural Stage Grouping via Module Key Names
-    n_stages = len(spatial_shapes)
+    # -------------------------------------------------
+    # CvT contains 3 hierarchical transformer stages: stage1 -> stage2 -> stage3
+    # CMT contains 4 hierarchical stages: stage1 -> stage2 -> stage3 -> stage4
+    #
+    # We dynamically infer stage ownership from module names rather than relying on fixed indexing. This keeps the
+    # visualization logic robust against asymmetric depth layouts and uture architectural modifications.
+    #
+    # Example:
+    #   CvT:  depths = (1, 2, 10)
+    #   CMT:  depths = (2, 2, 10, 2)
+
+    # Build valid stage name mapping dynamically based on active architecture
+    if model_name.lower() == "cvt":
+        stage_name_to_idx = {
+            "stage1": 0,
+            "stage2": 1,
+            "stage3": 2,
+        }
+    elif model_name.lower().startswith("cmt"):
+        stage_name_to_idx = {
+            "stage1": 0,
+            "stage2": 1,
+            "stage3": 2,
+            "stage4": 3,
+        }
+    else:
+        raise ValueError(f"Unsupported model_name='{model_name}'. Expected 'cvt' or 'cmt'.")
+
+    # We infer stage count directly from the model type so the visualization function becomes self-contained and does
+    # not require manually supplied spatial metadata.
+    n_stages = len(stage_name_to_idx)
     stage_groups: list[list[Tensor]] = [[] for _ in range(n_stages)]
 
-    # Dynamic string dispatch avoids collapsing asymmetrical block distributions
-    # (e.g., Stage 1 having 1 block while Stage 3 has 10 blocks).
+    # Group captured attention tensors by architectural stage
     for name, attn in sorted(attn_store.items()):
-        if "stage1" in name:
-            si = 0
-        elif "stage2" in name:
-            si = 1
-        elif "stage3" in name:
-            si = 2
-        else:
-            logger.info(f"Ignoring non-stage block target: {name}")
+        matched_stage = None
+        for stage_key, stage_idx in stage_name_to_idx.items():
+            if stage_key in name:
+                matched_stage = stage_idx
+                break
+        if matched_stage is None:
+            logger.info(f"Ignoring non-stage attention target: {name}")
             continue
 
-        # Reduce attention: (1, heads, N_q, N_kv) -> mean over heads and query positions
-        # This yields a pure 1-D array of length (N_kv,) reflecting local spatial contexts
+        # Reduce attention: (1, heads, N_q, N_kv) -> mean over heads and all query tokens -> (N_kv,)
+        # This yields a pure 1-D single spatial importance vector representing how strongly the model globally attends
+        # to each key/value location.
         block_avg = attn[0].mean(dim=0).mean(dim=0)
-        stage_groups[si].append(block_avg)
+        stage_groups[matched_stage].append(block_avg)
 
     # 3. Consolidate and Reshape Tensors Into Spatial Map Matrices
+    # --------------------------------------------------------
+    # Multiple transformer blocks exist inside each stage. We average them together to obtain a single representative
+    # attention distribution per hierarchical resolution level.
     stage_hmaps: list[np.ndarray] = []
     for si, group in enumerate(stage_groups):
         if not group:
             logger.warning(f"No attention weights found matching Stage {si + 1}")
             continue
 
-        # Safely stack blocks since they are structurally guaranteed to be uniform length now
+        # Stack all block-level attention summaries from the same stage: [(N_kv,), (N_kv,), ...] -> (num_blocks, N_kv)
+        # Then average across blocks to obtain one stable stage-level map.
         avg = torch.stack(group).mean(dim=0)  # (N_kv,)
-        h, w = spatial_shapes[si]
         n_kv = avg.numel()
 
-        # Handle projection padding discrepancies safely if spatial targets diverge slightly
-        if n_kv == h * w:
-            hmap = avg.reshape(h, w).numpy()
-        else:
-            side = int(np.sqrt(n_kv))
-            hmap = avg[:side * side].reshape(side, side).numpy()
-            logger.info(f"Stage {si + 1} size mismatch layout: fell back to square {side}x{side}.")
+        # Infer spatial dimensions automatically to avoid hardcoding architecture-specific layouts.
+        side = int(np.sqrt(n_kv))
 
+        if side * side != n_kv:
+            logger.warning(f"Stage {si+1} produced non-square token layout (N_kv={n_kv}). Cropping to nearest square.")
+
+        usable = side * side
+        hmap = avg[:usable].reshape(side, side).numpy()
         stage_hmaps.append(hmap)
 
     if not stage_hmaps:
@@ -324,14 +358,21 @@ def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_sh
         return
 
     # 4. Render and Export Multi-Stage Heatmaps
+    # -----------------------------------------
+    # Layout:
+    #   rows    -> architectural stages
+    #   columns -> [input | raw heatmap | overlay]
+    # Examples:
+    #   CvT -> 3 rows, CMT -> 4 rows
     n_rows = len(stage_hmaps)
     fig, axes = plt.subplots(n_rows, 3, figsize=(12, 4 * n_rows))
 
-    # Force 2D index continuity if evaluating a single-stage model slice
+    # Matplotlib collapses dimensions when only one row exists (single-stage model).
+    # Force consistent 2D indexing: axes[row, col]
     if n_rows == 1:
         axes = axes[np.newaxis, :]
 
-    fig.suptitle("CvT Attention Heatmaps per Stage", fontsize=14, fontweight="bold")
+    fig.suptitle(f"{model_name.upper()} Attention Heatmaps per Stage", fontsize=14, fontweight="bold")
 
     for si, hmap in enumerate(stage_hmaps):
         h, w = hmap.shape
@@ -369,10 +410,10 @@ def plot_attention_maps(image: Tensor, attn_store: dict[str, Tensor], spatial_sh
 
 def extract_attention_weights(model: torch.nn.Module) -> tuple[dict[str, Tensor], list]:
     """
-    Register forward hooks on all `ConvAttention` modules.
+    Register forward hooks on all attention modules of selected model.
 
     Args:
-        model: CvT model instance.
+        model: CvT/CMT model instance.
 
     Returns:
         (attn_store, hooks): `attn_store` is filled after a forward pass; remove hooks with [h.remove() for h in hooks].
@@ -387,6 +428,6 @@ def extract_attention_weights(model: torch.nn.Module) -> tuple[dict[str, Tensor]
         return hook
 
     for name, module in model.named_modules():
-        if type(module).__name__ == "ConvAttention":
+        if type(module).__name__ in ["ConvAttention", "CMT_LMHSA"]:
             hooks.append(module.register_forward_hook(_make_hook(name)))
     return attn_store, hooks

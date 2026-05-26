@@ -34,6 +34,7 @@ Note on relative position embedding
 The CMT paper mentions incorporating a relative position embedding into LMHSA. This is NOT implemented here. It is
 left as a future extension. The current implementation is the core attention mechanism without positional bias.
 """
+from typing import Optional
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
@@ -79,6 +80,8 @@ class CMT_LMHSA(nn.Module):
         self.head_dim = dim // num_heads
         self.sr_ratio = sr_ratio
         self.scale = self.head_dim ** -0.5    # 1 / sqrt(d_head)
+
+        self._last_attn: Optional[Tensor] = None
 
         # 1. Query projection (full resolution):  Maps (B, N, C) -> (B, N, C). The result is reshaped to multi-head
         # format (B, h, N, head_dim) inside forward().
@@ -175,6 +178,10 @@ class CMT_LMHSA(nn.Module):
         # attn (B, h, N, N_r): each of N queries attends to N_r key positions
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = F.softmax(attn, dim=-1)
+
+        # Save a copy of the attention matrix so the forward hook can see it!
+        self._last_attn = attn.detach()
+
         attn = self.attn_drop(attn)
 
         # (B, h, N, d) after weighting values
