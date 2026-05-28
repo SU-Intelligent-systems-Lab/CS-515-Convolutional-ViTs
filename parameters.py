@@ -507,7 +507,7 @@ def _build_parser() -> argparse.ArgumentParser:
     m.add_argument("--init-weights", type=str, default="trunc_normal",
                    choices=["trunc_normal", "kaiming"],
                    help="Weight initialisation scheme.")
-    m.add_argument("--cmt-variant", type=str, default="ti", choices=["ti", "xs", "s", "b"],
+    m.add_argument("--cmt-variant", type=str, default="xs", choices=["ti", "xs", "s", "b"],
                    help="CMT variants presented in the paper: ti (tiny), xs (extra-small), s (small), b (base).")
 
     # ------------------------------- Training --------------------------------

@@ -14,9 +14,11 @@ Functions
 """
 import datetime
 import os
+import math
 from typing import Optional, Dict
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import torch
 from torch import Tensor
@@ -88,6 +90,8 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
         history: Dict with any subset of keys: "train_loss", "val_loss", "train_top1", "val_top1", "val_top5", "lr".
         save_path: Filename stem.
     """
+    if history is None or not isinstance(history, dict) or (history.keys() == set()):
+        raise ValueError("history must be a dict with keys like 'train_loss', 'val_loss', 'train_top1', etc.")
     epochs = range(1, len(history["train_loss"]) + 1)
 
     fig = plt.figure(figsize=(16, 10))
@@ -119,7 +123,7 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
     # Top-5 accuracy
     ax = fig.add_subplot(gs[1, 0])
     if "train_top5" in history:
-        ax.plot(epochs, history["train_top5"], label="Train Top-1", linewidth=2)
+        ax.plot(epochs, history["train_top5"], label="Train Top-5", linewidth=2)
     if "val_top5" in history:
         ax.plot(epochs, history["val_top5"], label="Val Top-5", linewidth=2)
     ax.set_title("Val Top-5 Accuracy")
@@ -135,7 +139,27 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
         ax.set_title("Learning Rate (log scale)")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("LR")
-        ax.grid(True, alpha=0.3, which="both")
+
+        # subs="all" tells the locator to place a tick at 1x, 2x, 3x...9x of every power of 10
+        ax.yaxis.set_major_locator(ticker.LogLocator(base=10.0, subs="all"))
+
+        # Custom formatting function for the y-axis labels
+        def format_log(x, pos):
+            if x <= 0:
+                return ""
+
+            # Calculate the exponent and the base multiplier
+            power = int(math.floor(math.log10(x)))
+            base = x / (10 ** power)
+
+            # If the base is 1 (e.g., 0.0001), format as 10^x
+            if round(base, 2) == 1.0:
+                return f"$10^{{{power}}}$"
+
+            # For subdivisions (e.g., 0.0004), format as 4 x 10^x
+            return f"${base:g} \\times 10^{{{power}}}$"
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(format_log))
+        ax.grid(True, alpha=0.3, which="major")
     else:
         ax.set_visible(False)
 
