@@ -82,12 +82,16 @@ def plot_learning_curves(history: dict, save_path: str = f"loss_curves_{_ts()}")
     plt.close()
 
 
-def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard_{_ts()}") -> None:
+def plot_training_dashboard(history: dict, model_name: str, best_epoch: int = None,
+                            save_path: str = f"training_dashboard_{_ts()}") -> None:
     """
     Multi-panel training overview: loss, top-1, top-5, and LR schedule.
 
     Args:
-        history: Dict with any subset of keys: "train_loss", "val_loss", "train_top1", "val_top1", "val_top5", "lr".
+        history: Dict with any subset of keys: "train_loss", "val_loss", "train_top1", "val_top1", "train_top5",
+                 "val_top5", "lr".
+        model_name: Name of the model.
+        best_epoch: The epoch number where validation loss was lowest (draws a vertical line if provided).
         save_path: Filename stem.
     """
     if history is None or not isinstance(history, dict) or (history.keys() == set()):
@@ -95,13 +99,16 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
     epochs = range(1, len(history["train_loss"]) + 1)
 
     fig = plt.figure(figsize=(16, 10))
-    fig.suptitle("CvT Training Dashboard", fontsize=16, fontweight="bold")
+    fig.suptitle(f"{model_name.upper()} - Training Dashboard "
+                 f"{f'(Best Epoch: {best_epoch})' if best_epoch is not None else ''}", fontsize=16, fontweight="bold")
     gs = gridspec.GridSpec(2, 2, hspace=0.38, wspace=0.32)
 
     # Loss
     ax = fig.add_subplot(gs[0, 0])
     ax.plot(epochs, history["train_loss"], label="Train", linewidth=2)
     ax.plot(epochs, history["val_loss"], label="Val", linewidth=2)
+    if best_epoch is not None:
+        ax.axvline(x=best_epoch, color="red", linestyle="--", alpha=0.6, label="Best Epoch")
     ax.set_title("Loss")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
@@ -114,6 +121,8 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
         ax.plot(epochs, history["train_top1"], label="Train Top-1", linewidth=2)
     if "val_top1" in history:
         ax.plot(epochs, history["val_top1"], label="Val Top-1", linewidth=2)
+    if best_epoch is not None:
+        ax.axvline(x=best_epoch, color="red", linestyle="--", alpha=0.6, label="Best Epoch")
     ax.set_title("Top-1 Accuracy")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Accuracy (%)")
@@ -126,7 +135,9 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
         ax.plot(epochs, history["train_top5"], label="Train Top-5", linewidth=2)
     if "val_top5" in history:
         ax.plot(epochs, history["val_top5"], label="Val Top-5", linewidth=2)
-    ax.set_title("Val Top-5 Accuracy")
+    if best_epoch is not None:
+        ax.axvline(x=best_epoch, color="red", linestyle="--", alpha=0.6, label="Best Epoch")
+    ax.set_title("Top-5 Accuracy")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Accuracy (%)")
     ax.legend()
@@ -136,6 +147,8 @@ def plot_training_dashboard(history: dict, save_path: str = f"training_dashboard
     ax = fig.add_subplot(gs[1, 1])
     if "lr" in history:
         ax.semilogy(epochs, history["lr"], color="darkorange", linewidth=2)
+        if best_epoch is not None:
+            ax.axvline(x=best_epoch, color="red", linestyle="--", alpha=0.6, label="Best Epoch")
         ax.set_title("Learning Rate (log scale)")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("LR")

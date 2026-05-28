@@ -27,6 +27,7 @@ import dataclasses
 import glob
 import os
 from math import inf
+from operator import indexOf
 from pathlib import Path
 from typing import Optional, Tuple
 import torch
@@ -553,6 +554,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
     # Training state
     best_val_loss = inf
     best_val_top1 = 0.0
+    best_epoch = None
     best_weights = None
 
     history: dict[str, list] = {
@@ -571,6 +573,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         best_val_top1 = old_best_val_top1
         best_val_loss = old_best_val_loss
         history = old_history if old_history is not None else history
+        best_epoch = indexOf(history["val_loss"], best_val_loss) + 1 if history["val_loss"] else None
 
     save_dir = os.path.join(cfg.log.save_dir, cfg.log.run_name)
 
@@ -609,6 +612,7 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
             best_val_loss = val_loss
             best_val_top1 = val_top1
             best_weights = copy.deepcopy(model.state_dict())    # snapshot in memory
+            best_epoch = epoch
             save_checkpoint(
                 state={
                     "epoch": epoch,
@@ -652,6 +656,22 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
             if early_stopping.stop:
                 logger.warning(f"Early stopping triggered. Epoch {epoch - cfg.train.early_stopping_patience} had "
                                f"the lowest validation loss ({best_val_loss})")
+                save_checkpoint(
+                    state={
+                        "epoch": epoch,
+                        "model_state_dict": model.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "scheduler_state_dict": scheduler.state_dict(),
+                        "early_stopping_state": (early_stopping.state_dict() if early_stopping else {}),
+                        "best_val_loss": best_val_loss,
+                        "best_val_top1": best_val_top1,
+                        "history": history,
+                        "cfg": dataclasses.asdict(cfg),
+                    },
+                    save_dir=save_dir,
+                    filename=f"final__epoch_{epoch:03d}.pt",
+                    keep_last=cfg.log.keep_last,
+                )
                 break
 
     # Restore best weights into the model before returning
@@ -659,8 +679,11 @@ def run_training(model: nn.Module, cfg: Config, device: torch.device) -> nn.Modu
         model.load_state_dict(best_weights)
         logger.info(f"Training complete. Best val_loss={best_val_loss:.4f}, val_top-1={best_val_top1:.2f}%")
 
+    model_name = f"{cfg.model.model_name}-{cfg.model.cmt_variant}" \
+        if cfg.model.model_name == "cmt" else cfg.model.model_name
+
     # Save plots
     plot_learning_curves(history)
-    plot_training_dashboard(history)
+    plot_training_dashboard(history, model_name=model_name, best_epoch=best_epoch)
 
     return model
