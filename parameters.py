@@ -512,7 +512,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ------------------------------- Training --------------------------------
     t = parser.add_argument_group("Training")
-    t.add_argument("--mode", type=str, default="test", choices=["train", "test", "both", "profile"],
+    t.add_argument("--mode", type=str, default="both", choices=["train", "test", "both", "profile"],
                    help="Execution mode.")
     t.add_argument("--epochs", type=int, default=300, help="Total training epochs.")
     t.add_argument("--batch-size", type=int, default=128, help="Per-GPU batch size.")

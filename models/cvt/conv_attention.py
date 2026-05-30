@@ -127,7 +127,6 @@ class ConvAttention(nn.Module):
         self.cls_v = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
 
         self.attn_drop = nn.Dropout(attn_drop)
-        self.out_proj = nn.Linear(embed_dim, embed_dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
         self._last_attn: Optional[torch.Tensor] = None
@@ -222,7 +221,7 @@ class ConvAttention(nn.Module):
 
         attn = self.attn_drop(attn)
 
-        # ---------------- 4. Weighted sum over V ----------------
+        # ---------------- 4. Multiplication with V ----------------
         # Attention(Q, K, V) = softmax( Q x K_T / sqr_root(d_head) ) x V
         # Attention(Q, K, V) = (Output of 3.) x V
 

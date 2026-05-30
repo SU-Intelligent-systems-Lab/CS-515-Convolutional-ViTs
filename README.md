@@ -306,61 +306,93 @@ python main.py \
 | `--dataset`          | Dataset selection, currently only `tiny-imagenet-200` available |
 
 
-## Experiment Results
+## Experiment Results (CvT-13 vs. CMT-XS on Tiny ImageNet)
 
-## 1. Experiment Training: CvT on Tiny ImageNet
+[//]: # (## 1. Quantitative Results: )
 
-### 1.1. Validation Results
+[//]: # (### 1.1. Results on Validation Set)
 
-| Model | Dataset | Loss   | Top-1  | Top-5  | F1     | Precision | Recall | Epoch | Time Taken |
-|---|---|--------|--------|--------|--------|-----------|--------|---|---|
-| CvT | Tiny ImageNet | 2.0555 | 53.36% | 76.18% | 0.5234 | 0.5367    | 0.532  | 100 (Best: 92) | ⁓8h|
-| CMT-Ti | Tiny ImageNet | -      | -      | -      | -      | -         | -      | - | - |
+[//]: # ()
+[//]: # (| Model  | Model FLOPs | #Model Params | Loss   | Top-1  | Top-5  | Precision | Recall | F1     | Epoch         | Time Taken |)
 
-### 1.2. Test Results
+[//]: # (|--------|-------------|---------------|--------|--------|--------|-----------|---------|--------|---------------|------------|)
 
-| Model | Dataset | Top-1   | Top-5 | F1 | Precision | Recall |
-|---|---|---------|---|---|---|---|
-| CvT | Tiny ImageNet | 52.80% (2640/5000) | 76.90% | 0.52 | 0.54 | 0.53 |
-| CMT-Ti | Tiny ImageNet | -       | - | - | - | - | 
+[//]: # (| CvT-13 | 353.66 MMac | 24.36 M       | 2.2429 | 48.70% | 73.20% | 0.4984    | 0.4847 | 0.4763 | 135 &#40;Best: 95&#41; | ⁓6.5h      |)
 
-### 1.3. Training Dashboard
+[//]: # (| CMT-XS | 168.1 MMac  | 13.42 M       | 1.7282 | 61.80% | 80.88% | 0.6168    | 0.617 | 0.6097 | 300 &#40;Best: 299&#41; | ⁓27.66h    |)
 
-#### 1.3.1. CvT on Tiny ImageNet
+## 1. Quantitative Results on Test Set
+
+| Model  | Model FLOPs | #Model Params | Top-1  | Top-5   | Precision | Recall | F1     |
+|--------|-------------|---------------|--------|---------|-----------|---------|--------|
+| CvT-13 | 353.66 MMac | 24.36 M       | 48.9% (2445/5000) | 73.72%  | 0.5052    | 0.4886 | 0.4795 |
+| CMT-XS | 168.1 MMac  | 13.42 M       | 62.6% (3130/5000) | 81.58%  | 0.6268    | 0.6267 | 0.6194 |
+
+## 2. Training Dashboard
+
+### 2.1. CvT-13 on Tiny ImageNet
 
 <p align="center">
-  <img src="figs/experiments/1_cvt_training_dashboard.png" width="95%" alt="Training Dashboard">
+  <img src="figs/experiments/1_cvt_training_dashboard.png" width="95%" alt="Training Dashboard of CvT">
 </p>
 
-### 1.4. Attention Maps
+### 2.2. CMT-XS on Tiny ImageNet
 
-#### 1.4.1. CvT on Tiny ImageNet
+<p align="center">
+  <img src="figs/experiments/2_cmt_training_dashboard.png" width="95%" alt="Training Dashboard of CMT">
+</p>
+
+## 3. Attention Maps
+
+### 3.1. CvT-13 on Tiny ImageNet
 
 Visualization of learned attention patterns from trained models.
 
 <p align="center">
-  <img src="figs/experiments/1_cvt_attention_maps_img0.png" width="95%" alt="Attention Maps">
+  <img src="figs/experiments/1_cvt_attention_maps_img0.png" width="50%" alt="Attention Maps">
 </p>
 <p align="center">
-  <img src="figs/experiments/1_cvt_attention_maps_img1.png" width="95%" alt="Attention Maps">
+  <img src="figs/experiments/1_cvt_attention_maps_img1.png" width="50%" alt="Attention Maps">
 </p>
 <p align="center">
-  <img src="figs/experiments/1_cvt_attention_maps_img2.png" width="95%" alt="Attention Maps">
+  <img src="figs/experiments/1_cvt_attention_maps_img2.png" width="50%" alt="Attention Maps">
 </p>
 <p align="center">
-  <img src="figs/experiments/1_cvt_attention_maps_img3.png" width="95%" alt="Attention Maps">
+  <img src="figs/experiments/1_cvt_attention_maps_img3.png" width="50%" alt="Attention Maps">
 </p>
 
-### 1.5. Prediction Gallery
+### 3.2. CMT-XS on Tiny ImageNet
+
+Visualization of learned attention patterns from trained models.
+
+<p align="center">
+  <img src="figs/experiments/2_cmt_attention_maps_img0.png" width="50%" alt="Attention Maps">
+</p>
+<p align="center">
+  <img src="figs/experiments/2_cmt_attention_maps_img1.png" width="50%" alt="Attention Maps">
+</p>
+<p align="center">
+  <img src="figs/experiments/2_cmt_attention_maps_img2.png" width="50%" alt="Attention Maps">
+</p>
+<p align="center">
+  <img src="figs/experiments/2_cmt_attention_maps_img3.png" width="50%" alt="Attention Maps">
+</p>
+
+## 4. Prediction Gallery
 
 Example predictions from trained models.
 
-#### 1.5.1. CvT on Tiny ImageNet
+### 4.1. CvT-13 on Tiny ImageNet
 
 <p align="center">
-  <img src="figs/experiments/1_cvt_prediction_gallery.png" width="95%" alt="Prediction Gallery">
+  <img src="figs/experiments/1_cvt_prediction_gallery.png" width="95%" alt="Prediction Gallery of CvT">
 </p>
 
+### 4.2. CMT-XS on Tiny ImageNet
+
+<p align="center">
+  <img src="figs/experiments/2_cmt_prediction_gallery.png" width="95%" alt="Prediction Gallery of CMT">
+</p>
 
 ## Future Improvements
 
@@ -377,26 +409,28 @@ Example predictions from trained models.
 ### CvT
 
 ```bibtex
-@InProceedings{wu2021cvt,
-  title={CvT: Introducing Convolutions to Vision Transformers},
-  author={Wu, Haiping and Xiao, Binhui and Codella, Noel and Liu, Mengchen and Dai, Xiyang and Yuan, Lu and Zhang, Lei},
+@InProceedings{cvt2021,
+  title = {{CvT}: Introducing Convolutions to Vision Transformers},
+  author = {Wu, Haiping and Xiao, Binhui and Codella, Noel and Liu, Mengchen and Dai, Xiyang and Yuan, Lu and Zhang, Lei},
   booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
   month = {October},
   year = {2021},
-  pages = {22-31}
+  pages = {22-31},
+  doi = {10.1109/ICCV48922.2021.00009}
 }
 ```
 
 ### CMT
 
 ```bibtex
-@InProceedings{guo2022cmt,
-  title={CMT: Convolutional Neural Networks Meet Vision Transformers},
-  author={Guo, Jianyuan and Han, Kai and Wu, Han Wu and Tang, Yehui and Chen, Xinghao and Wang, Yunhe and Xu, Chang},
+@InProceedings{cmt2022,
+  title = {{CMT}: Convolutional Neural Networks Meet Vision Transformers},
+  author = {Guo, Jianyuan and Han, Kai and Wu, Han Wu and Tang, Yehui and Chen, Xinghao and Wang, Yunhe and Xu, Chang},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   month = {June},
   year = {2022},
-  pages = {12175-12185}
+  pages = {12175-12185},
+  doi = {10.1109/CVPR52688.2022.01186},
 }
 ```
 
