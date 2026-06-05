@@ -1,6 +1,6 @@
-# ConvViTs
+# ConvViTs (Convolutional ViTs)
 
-ConvViTs is a modular deep learning project focused on hybrid convolution-transformer architectures for computer vision.
+ConvViTs (Convolutional ViTs) is a modular deep learning project focused on hybrid convolution-transformer architectures for computer vision.
 
 The repository includes clean and extensible PyTorch implementations of:
 
